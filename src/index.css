@@ -1,8 +1,9 @@
 @import "tailwindcss";
+@import "./styles/tokens.css";
 
-/* Brand orange. Text and white-on-orange buttons use 700+ (AA contrast);
-   400-500 are for fills, rings and icons only. cream = warm neutral page background.
-   ds-allow-hardcode: this block IS the token source; raw values are only allowed here. */
+/* LEGACY (pre-DESIGN.md) tokens, kept only until every screen is rebuilt; deleted in the final cleanup.
+   New code must use the DESIGN.md tokens in styles/tokens.css.
+   ds-allow-hardcode: legacy token source. */
 @theme {
   --color-brand-50: #FFF7ED;
   --color-brand-100: #FFEDD5;
@@ -20,7 +21,7 @@
 @custom-variant short (@media (max-height: 600px));
 
 body {
-  @apply bg-cream text-stone-900 font-sans antialiased;
+  @apply bg-paper-2 text-ink font-sans antialiased;
 }
 
 #root {
@@ -28,7 +29,7 @@ body {
 }
 
 :focus-visible {
-  @apply outline-2 outline-offset-2 outline-brand-700;
+  @apply outline-3 outline-offset-3 outline-ink;
 }
 
 @media (hover: none) {

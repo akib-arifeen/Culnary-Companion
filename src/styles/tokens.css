@@ -1,0 +1,120 @@
+/* Hallmark · genre: editorial (utilitarian) · macrostructure: The Rail / Full ticket / The Pass
+ * design-system: DESIGN.md · designed-as-app · theme: custom "The Pass"
+ * vibe: kitchen ticket rail, ink and tomato, legible across the room
+ * paper oklch(97.5% 0.008 90) · accent oklch(52% 0.19 29) tomato
+ * display/body: Atkinson Hyperlegible Next · mono: Atkinson Hyperlegible Mono
+ * axes: light / humanist-sans (legibility) / warm
+ */
+
+/* ds-allow-hardcode:start — this file IS the token source and the geometry of the signature utilities;
+   raw values are allowed only here. Everything else references these tokens. */
+@theme {
+  --color-paper: oklch(97.5% 0.008 90);
+  --color-paper-2: oklch(93.5% 0.012 85);
+  --color-ink: oklch(21% 0.015 60);
+  --color-ink-2: oklch(43% 0.015 60);
+  --color-rule: oklch(85% 0.01 80);
+  --color-accent: oklch(52% 0.19 29);
+  --color-accent-ink: oklch(98.5% 0.005 90);
+  --color-accent-soft: oklch(93% 0.04 35);
+
+  --font-sans: "Atkinson Hyperlegible Next Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Atkinson Hyperlegible Mono Variable", ui-monospace, monospace;
+
+  --text-step: clamp(1.6rem, 1.05rem + 2.6vw, 4.5rem);
+  --text-step--line-height: 1.12;
+  --text-step-s: clamp(1.35rem, 0.95rem + 1.9vw, 3.25rem);
+  --text-step-s--line-height: 1.15;
+  --text-clock: clamp(2.75rem, 1.8rem + 4vw, 6rem);
+  --text-clock--line-height: 1;
+  --text-title: clamp(1.75rem, 1.3rem + 1.6vw, 2.75rem);
+  --text-title--line-height: 1.08;
+  --text-ticket: 1.125rem;
+  --text-ticket--line-height: 1.25;
+  --text-label: 0.8125rem;
+  --text-label--line-height: 1.2;
+
+  --radius-ticket: 6px;
+  --radius-control: 8px;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-quick: 140ms;
+  --dur-step: 200ms;
+}
+
+/* Mono call-out label: the ticket-printer voice for quantities, times, counts and strip headers. */
+@utility label-mono {
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  line-height: var(--text-label--line-height);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* A recipe / step ticket: paper on the rail, hairline edge, no shadow. */
+@utility ticket {
+  position: relative;
+  background-color: var(--color-paper);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-ticket);
+}
+
+/*
+ * Perforation: dashed tear line with half-circle notches cut into both edges.
+ * Must be a full-width child of a .ticket that sits on paper-2 (the notches are paper-2 discs
+ * overlapping the ticket border). Removing the notches turns tickets back into generic cards.
+ */
+@utility perforation {
+  position: relative;
+  height: 0;
+  border-top: 2px dashed var(--color-rule);
+  &::before,
+  &::after {
+    content: "";
+    position: absolute;
+    top: -9px;
+    width: 16px;
+    height: 16px;
+    border-radius: 9999px;
+    background-color: var(--color-paper-2);
+    border: 1px solid var(--color-rule);
+  }
+  &::before {
+    left: -9px;
+    clip-path: inset(0 0 0 50%);
+  }
+  &::after {
+    right: -9px;
+    clip-path: inset(0 50% 0 0);
+  }
+}
+
+/* Live / listening dot: slow opacity pulse; static under reduced motion (index.css kills animations). */
+@keyframes live-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+@utility live-pulse {
+  animation: live-pulse 1.6s var(--ease-out) infinite;
+}
+
+@keyframes step-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@utility step-in {
+  animation: step-in var(--dur-step) var(--ease-out) both;
+}
+/* ds-allow-hardcode:end */
