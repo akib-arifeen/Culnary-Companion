@@ -1,0 +1,41 @@
+__NOTOC__
+{{recipe summary
+| category = Italian recipes
+| servings = 1–2
+| time = 
+| difficulty = 2
+| image = [[Image:Spaghetti aglio olio e peperoncino by matsuyuki_retouched.jpg|300px]]
+| energy = 
+| note = 
+}}
+
+{{recipe}} | [[Cookbook:Cuisine of Italy|Cuisine of Italy]] | [[Cookbook:Pasta Recipes|Pasta Recipes]]
+==Ingredients==
+
+*100–150 [[Cookbook:Gram|g]] [[cookbook:spaghetti|spaghetti]]
+*1–2 cloves of [[cookbook:garlic|garlic]]
+*[[cookbook:olive oil|Olive oil]]
+*Black [[cookbook:pepper|pepper]]
+*Italian [[cookbook:parsley|parsley]], [[Cookbook:Chopping|chopped]]
+
+==Procedure==
+
+#[[Cookbook:Boiling|Boil]] spaghetti in sufficiently salted water until ''[[Cookbook:Al Dente|al dente]]''.
+#Peel cloves of garlic and crush them gently with the heel of hand.
+#Heat 2–3 mm olive oil in a pan. Add garlic, and cook until it takes on a golden color. Take care not to let the garlic get too dark, as it will become bitter.
+#Remove garlic from the oil.
+#Drain the finished spaghetti and add to the pan with olive oil.
+#Spice with pepper, mix everything, and serve with parsley.
+
+==Notes, tips, and variations==
+*For a stronger taste slice the garlic and leave in the olive oil when adding the pasta.
+*Try frying the parsley in the oil.
+*Try adding some butter to the oil.
+*Spaghetti aglio e olio is traditionally served without cheese.
+
+[[Category:Recipes using pasta and noodles]]
+[[Category:Recipes using garlic]]
+[[Category:Recipes using olive oil]]
+[[Category:Recipes using pepper]]
+
+[[de:Kochbuch/ Spaghetti aglio e olio]]

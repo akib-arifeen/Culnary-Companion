@@ -1,48 +1,37 @@
-import MobileHeader from '../components/MobileHeader'
-import PersistentNavBar from '../components/PersistentNavBar'
-import RecipeCard from '../components/RecipeCard'
-import { mockRecipes } from '../data/mockData'
-import { Clock } from 'lucide-react'
+import EmptyState from '../components/EmptyState'
+import Page from '../components/Page'
+import ResumeTicket from '../components/ResumeTicket'
+import { getRecipeById } from '../data/recipes'
+import { useRecipeContext } from '../context/RecipeContext'
 
+/** "In progress": a rail of resume tickets, each with the step you stopped on. */
 const RecentsScreen = () => {
-  // Show recent recipes (last 3 viewed - for demo, we'll show recent recipes from the list)
-  const recentRecipes = mockRecipes.slice(0, 6) // Show first 6 as "recent" for demo
+  const { inProgress, clearInProgress } = useRecipeContext()
+  const items = Object.entries(inProgress).flatMap(([id, step]) => {
+    const recipe = getRecipeById(id)
+    return recipe ? [{ recipe, step: Math.min(step, recipe.steps.length - 1) }] : []
+  })
 
   return (
-    <div className="min-h-screen bg-white pb-20">
-      <MobileHeader title="Recents" showBack />
-      
-      <main className="px-4 py-4">
-        {recentRecipes.length > 0 ? (
-          <div className="grid grid-cols-2 gap-3">
-            {recentRecipes.map((recipe) => (
-              <RecipeCard
-                key={recipe.id}
-                id={recipe.id}
-                title={recipe.title}
-                image={recipe.image}
-                difficulty={recipe.difficulty}
-                prepTime={recipe.prepTime}
-                cookTime={recipe.cookTime}
-              />
+    <Page>
+      <h1 className="text-title font-extrabold tracking-tight text-ink">In progress</h1>
+      <div className="mt-6">
+        {items.length > 0 ? (
+          <ul aria-label="Recipes in progress" className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {items.map(({ recipe, step }) => (
+              <li key={recipe.id} className="min-w-0">
+                <ResumeTicket recipe={recipe} step={step} onDiscard={() => clearInProgress(recipe.id)} />
+              </li>
             ))}
-          </div>
+          </ul>
         ) : (
-          <div className="flex flex-col items-center justify-center h-64 text-center">
-            <Clock className="text-gray-300 mb-4" size={48} />
-            <p className="text-gray-500 mb-2">No recent recipes</p>
-            <p className="text-sm text-gray-400">Start viewing recipes to see them here!</p>
-          </div>
+          <EmptyState strip="In progress · 0" actionLabel="Pick a recipe">
+            Recipes you start cooking appear here with the step you reached.
+          </EmptyState>
         )}
-      </main>
-
-      <PersistentNavBar />
-    </div>
+      </div>
+    </Page>
   )
 }
 
 export default RecentsScreen
-
-
-
-

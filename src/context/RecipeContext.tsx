@@ -1,8 +1,10 @@
-import { createContext, useContext, useState, ReactNode } from 'react'
+import { createContext, useCallback, useContext, useMemo, type ReactNode } from 'react'
+import { recipes } from '../data/recipes'
+import { PREF_KEYS, readJSON, usePref, writeJSON } from '../lib/storage'
 
 interface RecipeContextType {
   favorites: string[]
-  inProgress: { [key: string]: number } // recipeId -> currentStep
+  inProgress: { [key: string]: number } // recipeId -> current step index (0-based)
   toggleFavorite: (recipeId: string) => void
   isFavorite: (recipeId: string) => boolean
   setInProgress: (recipeId: string, step: number) => void
@@ -12,71 +14,68 @@ interface RecipeContextType {
 
 const RecipeContext = createContext<RecipeContextType | undefined>(undefined)
 
-export const RecipeProvider = ({ children }: { children: ReactNode }) => {
-  const [favorites, setFavorites] = useState<string[]>(() => {
-    // Load from localStorage
-    const saved = localStorage.getItem('culinary-companion-favorites')
-    return saved ? JSON.parse(saved) : ['2'] // Default: Quick Avocado Toast is favorite
-  })
+/**
+ * Storage is user-editable and may hold anything; keep only what has the right shape AND names a recipe
+ * that exists. Ids saved by the previous dataset (numeric "1".."8") are dropped instead of listing nothing.
+ */
+const exists = (id: string) => recipes.some((recipe) => recipe.id === id)
 
-  const [inProgress, setInProgressState] = useState<{ [key: string]: number }>(() => {
-    // Load from localStorage
-    const saved = localStorage.getItem('culinary-companion-in-progress')
-    return saved ? JSON.parse(saved) : { '3': 2, '5': 1 } // Default: Lemon Herb Salmon at step 2, Margherita Pizza at step 1
-  })
-
-  const toggleFavorite = (recipeId: string) => {
-    setFavorites((prev) => {
-      const newFavorites = prev.includes(recipeId)
-        ? prev.filter((id) => id !== recipeId)
-        : [...prev, recipeId]
-      localStorage.setItem('culinary-companion-favorites', JSON.stringify(newFavorites))
-      return newFavorites
-    })
-  }
-
-  const isFavorite = (recipeId: string) => {
-    return favorites.includes(recipeId)
-  }
-
-  const setInProgress = (recipeId: string, step: number) => {
-    setInProgressState((prev) => {
-      const newState = { ...prev, [recipeId]: step }
-      localStorage.setItem('culinary-companion-in-progress', JSON.stringify(newState))
-      return newState
-    })
-  }
-
-  const clearInProgress = (recipeId: string) => {
-    setInProgressState((prev) => {
-      const newState = { ...prev }
-      delete newState[recipeId]
-      localStorage.setItem('culinary-companion-in-progress', JSON.stringify(newState))
-      return newState
-    })
-  }
-
-  const getCurrentStep = (recipeId: string) => {
-    return inProgress[recipeId]
-  }
-
-  return (
-    <RecipeContext.Provider
-      value={{
-        favorites,
-        inProgress,
-        toggleFavorite,
-        isFavorite,
-        setInProgress,
-        clearInProgress,
-        getCurrentStep,
-      }}
-    >
-      {children}
-    </RecipeContext.Provider>
-  )
+function cleanFavorites(raw: unknown): string[] {
+  return Array.isArray(raw) ? raw.filter((x): x is string => typeof x === 'string' && exists(x)) : []
 }
 
+function cleanProgress(raw: unknown): { [key: string]: number } {
+  const out: { [key: string]: number } = {}
+  if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+    for (const [id, step] of Object.entries(raw)) {
+      if (exists(id) && typeof step === 'number' && Number.isInteger(step) && step >= 0) out[id] = step
+    }
+  }
+  return out
+}
+
+export const RecipeProvider = ({ children }: { children: ReactNode }) => {
+  const [rawFavorites] = usePref<unknown>(PREF_KEYS.favorites, [])
+  const [rawProgress] = usePref<unknown>(PREF_KEYS.progress, {})
+  const favorites = useMemo(() => cleanFavorites(rawFavorites), [rawFavorites])
+  const inProgress = useMemo(() => cleanProgress(rawProgress), [rawProgress])
+
+  // Writers read the stored value again (not the render-time copy), so two quick taps in one tick
+  // both apply.
+  const toggleFavorite = useCallback((recipeId: string) => {
+    const current = cleanFavorites(readJSON<unknown>(PREF_KEYS.favorites, []))
+    writeJSON(
+      PREF_KEYS.favorites,
+      current.includes(recipeId) ? current.filter((id) => id !== recipeId) : [...current, recipeId],
+    )
+  }, [])
+
+  const setInProgress = useCallback((recipeId: string, step: number) => {
+    const current = cleanProgress(readJSON<unknown>(PREF_KEYS.progress, {}))
+    if (current[recipeId] === step) return
+    writeJSON(PREF_KEYS.progress, { ...current, [recipeId]: step })
+  }, [])
+
+  const clearInProgress = useCallback((recipeId: string) => {
+    const current = cleanProgress(readJSON<unknown>(PREF_KEYS.progress, {}))
+    if (!(recipeId in current)) return
+    const next = { ...current }
+    delete next[recipeId]
+    writeJSON(PREF_KEYS.progress, next)
+  }, [])
+
+  const isFavorite = useCallback((recipeId: string) => favorites.includes(recipeId), [favorites])
+  const getCurrentStep = useCallback((recipeId: string) => inProgress[recipeId], [inProgress])
+
+  const value = useMemo<RecipeContextType>(
+    () => ({ favorites, inProgress, toggleFavorite, isFavorite, setInProgress, clearInProgress, getCurrentStep }),
+    [favorites, inProgress, toggleFavorite, isFavorite, setInProgress, clearInProgress, getCurrentStep],
+  )
+
+  return <RecipeContext.Provider value={value}>{children}</RecipeContext.Provider>
+}
+
+// eslint-disable-next-line react-refresh/only-export-components -- hook colocated with its provider
 export const useRecipeContext = () => {
   const context = useContext(RecipeContext)
   if (!context) {
@@ -84,4 +83,3 @@ export const useRecipeContext = () => {
   }
   return context
 }
-

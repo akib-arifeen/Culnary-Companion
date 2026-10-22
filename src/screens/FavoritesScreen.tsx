@@ -1,46 +1,27 @@
-import MobileHeader from '../components/MobileHeader'
-import PersistentNavBar from '../components/PersistentNavBar'
-import RecipeCard from '../components/RecipeCard'
-import { mockRecipes } from '../data/mockData'
+import EmptyState from '../components/EmptyState'
+import Page from '../components/Page'
+import RecipeRail from '../components/RecipeRail'
+import { recipes } from '../data/recipes'
 import { useRecipeContext } from '../context/RecipeContext'
-import { Heart } from 'lucide-react'
 
 const FavoritesScreen = () => {
   const { favorites } = useRecipeContext()
-  const favoriteRecipes = mockRecipes.filter(recipe => favorites.includes(recipe.id))
+  const saved = recipes.filter((recipe) => favorites.includes(recipe.id))
 
   return (
-    <div className="min-h-screen bg-white pb-20">
-      <MobileHeader title="Favorites" showBack />
-      
-      <main className="px-4 py-4">
-        {favoriteRecipes.length > 0 ? (
-          <div className="grid grid-cols-2 gap-3">
-            {favoriteRecipes.map((recipe) => (
-              <RecipeCard
-                key={recipe.id}
-                id={recipe.id}
-                title={recipe.title}
-                image={recipe.image}
-                difficulty={recipe.difficulty}
-                prepTime={recipe.prepTime}
-                cookTime={recipe.cookTime}
-              />
-            ))}
-          </div>
+    <Page>
+      <h1 className="text-title font-extrabold tracking-tight text-ink">Saved</h1>
+      <div className="mt-6">
+        {saved.length > 0 ? (
+          <RecipeRail recipes={saved} label="Saved recipes" />
         ) : (
-          <div className="flex flex-col items-center justify-center h-64 text-center">
-            <Heart className="text-gray-300 mb-4" size={48} />
-            <p className="text-gray-500 mb-2">No favorites yet</p>
-            <p className="text-sm text-gray-400">Start adding recipes to your favorites!</p>
-          </div>
+          <EmptyState strip="Saved · 0" actionLabel="Browse recipes">
+            Tap SAVE RECIPE on any recipe to keep it here.
+          </EmptyState>
         )}
-      </main>
-
-      <PersistentNavBar />
-    </div>
+      </div>
+    </Page>
   )
 }
 
 export default FavoritesScreen
-

@@ -1,40 +1,54 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { lazy, Suspense, useEffect } from 'react'
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router'
 import { RecipeProvider } from './context/RecipeContext'
-import { VoiceGestureProvider } from './context/VoiceGestureContext'
 import { TimerProvider } from './context/TimerContext'
 import HomeScreen from './screens/HomeScreen'
 import RecipeOverviewScreen from './screens/RecipeOverviewScreen'
-import ActiveCookingScreen from './screens/ActiveCookingScreen'
 import SettingsScreen from './screens/SettingsScreen'
 import FavoritesScreen from './screens/FavoritesScreen'
 import SearchScreen from './screens/SearchScreen'
 import RecentsScreen from './screens/RecentsScreen'
-import GestureDebugScreen from './screens/GestureDebugScreen'
+import TimerDoneBanner from './components/TimerDoneBanner'
+
+// Cooking mode (media hooks, timers UI, onboarding) is its own chunk, so browsing doesn't download it.
+const CookingScreen = lazy(() => import('./screens/CookingScreen'))
+
+/** BrowserRouter keeps the old scroll offset; without this a recipe opened from low in the grid starts mid-page. */
+function ScrollToTop() {
+  const { pathname } = useLocation()
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [pathname])
+  return null
+}
 
 function App() {
   return (
     <RecipeProvider>
-      <VoiceGestureProvider>
-        <TimerProvider>
-          <Router>
-            <div className="min-h-screen bg-white">
-              <Routes>
+      <TimerProvider>
+        <Router>
+          <ScrollToTop />
+          <TimerDoneBanner />
+          <Routes>
             <Route path="/" element={<HomeScreen />} />
             <Route path="/recipe/:id" element={<RecipeOverviewScreen />} />
-            <Route path="/cooking/:id" element={<ActiveCookingScreen />} />
+            <Route
+              path="/cooking/:id"
+              element={
+                <Suspense fallback={<div className="min-h-dvh bg-paper-2" aria-busy="true" />}>
+                  <CookingScreen />
+                </Suspense>
+              }
+            />
             <Route path="/settings" element={<SettingsScreen />} />
             <Route path="/favorites" element={<FavoritesScreen />} />
             <Route path="/search" element={<SearchScreen />} />
             <Route path="/recents" element={<RecentsScreen />} />
-            <Route path="/gesture-debug" element={<GestureDebugScreen />} />
-              </Routes>
-            </div>
-          </Router>
-        </TimerProvider>
-      </VoiceGestureProvider>
+          </Routes>
+        </Router>
+      </TimerProvider>
     </RecipeProvider>
   )
 }
 
 export default App
-
