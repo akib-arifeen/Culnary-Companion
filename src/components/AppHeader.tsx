@@ -1,41 +1,36 @@
-import { Link, useLocation, useNavigate } from 'react-router'
-import { ArrowLeft, ChefHat } from 'lucide-react'
+import { Link, useLocation } from 'react-router'
+import { Wordmark } from './ui/primitives'
+import { NAV_ITEMS } from './navItems'
 
-interface AppHeaderProps {
-  /** Page title with a back button. Omit on the home screen to show the brand mark instead. */
-  title?: string
-}
-
-export default function AppHeader({ title }: AppHeaderProps) {
-  const navigate = useNavigate()
-  const location = useLocation()
-
-  // A deep link has no in-app history to go back to; fall back to Home instead of leaving the app.
-  const goBack = () => (location.key === 'default' ? navigate('/') : navigate(-1))
-
+/** Wordmark on the left; from md up the three places sit on the right (phones use the bottom bar). */
+export default function AppHeader() {
+  const { pathname } = useLocation()
   return (
-    <header className="sticky top-0 z-40 border-b border-stone-200 bg-white/95 backdrop-blur">
-      <div className="mx-auto flex h-14 w-full max-w-5xl items-center gap-2 px-4 short:h-11">
-        {title ? (
-          <>
-            <button
-              type="button"
-              onClick={goBack}
-              aria-label="Back"
-              className="-ml-2 flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-full text-stone-700 hover:bg-stone-100 short:size-9"
-            >
-              <ArrowLeft size={22} aria-hidden="true" />
-            </button>
-            <h1 className="min-w-0 truncate text-lg font-semibold text-stone-900">{title}</h1>
-          </>
-        ) : (
-          <h1 className="flex min-w-0 items-center gap-2 text-lg font-semibold text-stone-900">
-            <Link to="/" className="flex items-center gap-2 rounded-md">
-              <ChefHat className="shrink-0 text-brand-700" size={26} aria-hidden="true" />
-              <span className="truncate">Culinary Companion</span>
-            </Link>
-          </h1>
-        )}
+    <header className="border-b border-ink-2 bg-paper">
+      <div className="mx-auto flex min-h-14 w-full max-w-6xl items-center justify-between gap-4 px-4">
+        <Link to="/" aria-label="Culinary Companion, Recipes" className="inline-flex min-h-11 items-center">
+          <Wordmark />
+        </Link>
+        <nav aria-label="Main" className="hidden md:block">
+          <ul className="flex gap-1">
+            {NAV_ITEMS.map((item) => {
+              const current = item.match(pathname)
+              return (
+                <li key={item.to}>
+                  <Link
+                    to={item.to}
+                    aria-current={current}
+                    className={`label-mono inline-flex min-h-11 items-center whitespace-nowrap px-3 text-ink hover:underline hover:underline-offset-4 ${
+                      current ? 'font-extrabold underline decoration-2 underline-offset-8' : ''
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                </li>
+              )
+            })}
+          </ul>
+        </nav>
       </div>
     </header>
   )

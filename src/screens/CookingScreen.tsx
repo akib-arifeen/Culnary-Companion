@@ -1,28 +1,31 @@
 import { useEffect, useLayoutEffect, useReducer, useRef, useState } from 'react'
 import { ChefHat } from 'lucide-react'
-import { Link, useNavigate, useParams } from 'react-router'
+import { useNavigate, useParams } from 'react-router'
 import CameraPip from '../components/cooking/CameraPip'
-import CommandToast, { type ToastData } from '../components/cooking/CommandToast'
 import CompletionDialog from '../components/cooking/CompletionDialog'
-import ControlBar from '../components/cooking/ControlBar'
-import CookingHeader, { StepProgress } from '../components/cooking/CookingHeader'
+import ControlStrip from '../components/cooking/ControlStrip'
 import CookingTabs from '../components/cooking/CookingTabs'
 import HandsFreePanel from '../components/cooking/HandsFreePanel'
-import IngredientsView from '../components/cooking/IngredientsView'
-import StepView from '../components/cooking/StepView'
-import TimersView from '../components/cooking/TimersView'
+import HeardStrip, { type HeardData } from '../components/cooking/HeardStrip'
+import IngredientsPanel from '../components/cooking/IngredientsPanel'
+import StepTicket from '../components/cooking/StepTicket'
+import TimersPanel from '../components/cooking/TimersPanel'
+import TopBar from '../components/cooking/TopBar'
 import { PIP_RESERVE, pipMode } from '../components/cooking/pipMode'
 import { cancelTarget, latestPaused, resetTarget, runningSoonest, toggleTarget } from '../components/cooking/timerTargets'
-import { BTN_PRIMARY } from '../components/cooking/ui'
+import { useCookingLayout } from '../components/cooking/useCookingLayout'
+import { ButtonLink } from '../components/ui/primitives'
 import { useRecipeContext } from '../context/RecipeContext'
 import { useTimers } from '../context/TimerContext'
-import { getRecipeById, type Recipe } from '../data/recipes'
+import { getRecipeById } from '../data/recipes'
+import type { Recipe } from '../data/types'
 import { useGestureRecognizer } from '../hooks/useGestureRecognizer'
 import { useSpeechCommands } from '../hooks/useSpeechCommands'
 import { useSpeechSynthesis } from '../hooks/useSpeechSynthesis'
 import { describeCommand, type Command, type CommandSource, type CookingTab } from '../lib/commands'
 import { cookingReducer, initCookingState } from '../lib/cookingSession'
 import { GESTURE_COMMANDS, GESTURE_GUIDE, type GestureName } from '../lib/gestures'
+import { ingredientsInStep } from '../lib/ingredientsInStep'
 import { keyToCommand } from '../lib/keyboard'
 import { PREF_DEFAULTS, PREF_KEYS, usePref } from '../lib/storage'
 import { formatSpokenDuration, isRunning, type KitchenTimer } from '../lib/timers'
@@ -30,13 +33,13 @@ import { matchIngredient, parseVoiceCommand } from '../lib/voiceParser'
 
 function RecipeNotFound() {
   return (
-    <main className="flex h-[100dvh] flex-col items-center justify-center gap-4 bg-cream px-6 text-center text-stone-900">
-      <ChefHat className="size-12 text-brand-700" aria-hidden="true" />
-      <h1 className="text-3xl font-semibold">Recipe not found</h1>
-      <p className="max-w-sm text-lg text-stone-600">We couldn’t find that recipe. It may have been removed.</p>
-      <Link to="/" className={`${BTN_PRIMARY} h-12`}>
+    <main className="flex h-[100dvh] flex-col items-center justify-center gap-4 bg-paper-2 px-6 text-center text-ink">
+      <ChefHat className="size-12 text-ink" strokeWidth={2} aria-hidden="true" />
+      <h1 className="text-title font-extrabold">Recipe not found</h1>
+      <p className="max-w-sm text-lg text-ink-2">We couldn’t find that recipe. It may have been removed.</p>
+      <ButtonLink to="/" size="lg">
         Back to recipes
-      </Link>
+      </ButtonLink>
     </main>
   )
 }
@@ -70,10 +73,6 @@ function readInIframe(): boolean {
   }
 }
 
-function isFailed(status: string): boolean {
-  return status === 'denied' || status === 'unavailable' || status === 'error'
-}
-
 function CookingSession({ recipe }: { recipe: Recipe }) {
   const navigate = useNavigate()
   const { setInProgress, clearInProgress, getCurrentStep } = useRecipeContext()
@@ -94,23 +93,27 @@ function CookingSession({ recipe }: { recipe: Recipe }) {
   )
   const [panelOpen, setPanelOpen] = useState(() => !onboarded)
   const [learned, setLearned] = useState<ReadonlySet<GestureName>>(() => new Set())
-  const [toast, setToast] = useState<ToastData | null>(null)
+  const [heard, setHeard] = useState<HeardData | null>(null)
   const [inIframe] = useState(readInIframe)
 
-  const toastKey = useRef(0)
+  const heardKey = useRef(0)
   const consideredStep = useRef<number | null>(null)
   const hasSpoken = useRef(false)
   const latest = useRef<Latest | null>(null)
   const layoutRef = useRef<HTMLDivElement>(null)
+  const ingredientsRef = useRef<HTMLDivElement>(null)
+  const timersRef = useRef<HTMLDivElement>(null)
+  const layout = useCookingLayout()
 
   const speech = useSpeechSynthesis({ rate: 0.95 })
   const { speak } = speech
   const ingredientNames = recipe.ingredients.map((i) => i.name)
   const stepText = (index: number) => `Step ${index + 1}. ${recipe.steps[index].instruction}`
 
-  const notify = (kind: ToastData['kind'], text: string, heard?: string) => {
-    toastKey.current += 1
-    setToast({ key: toastKey.current, kind, text, heard })
+  /** Feedback lives in the HEARD strip (there are no toasts on the cooking screen). */
+  const notify = (kind: HeardData['kind'], text: string, heardText?: string) => {
+    heardKey.current += 1
+    setHeard({ key: heardKey.current, kind, text, heard: heardText })
   }
 
   const openPanel = () => {
@@ -334,9 +337,18 @@ function CookingSession({ recipe }: { recipe: Recipe }) {
   const stepTimer = timers.timers.find((t) => t.recipeId === recipe.id && t.stepNumber === stepNumber)
   const runningCount = timers.timers.filter(isRunning).length
 
-  const voiceProblem = voicePref && isFailed(voice.status)
-  const mode = pipMode({ gesturesOn: gesturesPref, previewPref: cameraPreview, gesturesStatus: gestures.status, voiceProblem })
-  const problemText = gesturesPref && isFailed(gestures.status) ? 'Gestures need attention' : 'Voice needs attention'
+  const mode = pipMode({ gesturesOn: gesturesPref, previewPref: cameraPreview, gesturesStatus: gestures.status })
+
+  // Ingredients the CURRENT step mentions get the "THIS STEP" highlight.
+  const usedNow = new Set(ingredientsInStep(ingredientNames, step.instruction))
+
+  // With no tabs, "show ingredients / timers" (voice, key, gesture) brings that section into view in the rail.
+  const tab = state.tab
+  useEffect(() => {
+    if (layout === 'tabs') return
+    const el = tab === 'ingredients' ? ingredientsRef.current : tab === 'timers' ? timersRef.current : null
+    el?.scrollIntoView?.({ block: 'nearest' })
+  }, [tab, layout])
 
   // "Try again" = off, then on again shortly after. The pending "on" must never outlive the screen or a manual toggle,
   // or the camera / microphone would start later without a click.
@@ -358,71 +370,127 @@ function CookingSession({ recipe }: { recipe: Recipe }) {
     }
   }, [])
 
+  const reserve = layout === 'lg' || panelOpen || finished ? '' : PIP_RESERVE[mode]
+
+  const heardStrip = (
+    <HeardStrip
+      framed={layout === 'lg'}
+      heard={heard}
+      voiceOn={voicePref}
+      voiceStatus={voice.status}
+      voiceMessage={voice.message}
+      speaking={speech.speaking}
+      gesturesOn={gesturesPref}
+      gesturesStatus={gestures.status}
+      gesturesMessage={gestures.message}
+      onTurnOnVoice={() => {
+        cancelRetry('voice')
+        setVoicePref(true)
+      }}
+      onRetryVoice={() => retry('voice', setVoicePref)}
+      onRetryGestures={() => retry('gestures', setGesturesPref)}
+    />
+  )
+
+  const stepTicket = (
+    <StepTicket
+      stepNumber={stepNumber}
+      stepCount={state.stepCount}
+      instruction={step.instruction}
+      duration={step.duration}
+      stepTimer={stepTimer}
+      now={timers.now}
+      nextInstruction={nextStep?.instruction}
+      onStartTimer={() => run({ type: 'startTimer' }, 'tap')}
+      onToggleTimer={timers.toggle}
+      hideNumeral={layout === 'tabs' && mode !== 'none'}
+    />
+  )
+
+  const timersPanel = (
+    <TimersPanel
+      timers={timers.timers}
+      now={timers.now}
+      recipeId={recipe.id}
+      stepDuration={stepTimer || layout !== 'tabs' ? undefined : step.duration}
+      stepNumber={stepNumber}
+      onStartPreset={startTimer}
+      onStartStepTimer={() => run({ type: 'startTimer' }, 'tap')}
+      onToggle={timers.toggle}
+      onReset={timers.reset}
+      onRemove={timers.remove}
+    />
+  )
+
+  const ingredientsPanel = (
+    <IngredientsPanel
+      ingredients={recipe.ingredients}
+      checked={state.checked}
+      usedNow={usedNow}
+      onToggle={(index) => dispatch({ type: 'setIngredient', index })}
+      onCheckAll={(checked) => run({ type: 'checkAll', checked }, 'tap')}
+    />
+  )
+
+  const pip = panelOpen || finished ? null : (
+    <CameraPip
+      mode={mode}
+      placement={layout === 'lg' ? 'rail' : 'float'}
+      status={gestures.status}
+      live={gestures.live}
+      videoRef={gestures.videoRef}
+      onHidePreview={() => setCameraPreview(false)}
+      onShowPreview={() => setCameraPreview(true)}
+    />
+  )
+
   return (
     <>
-      <div ref={layoutRef} className="flex h-[100dvh] flex-col overflow-hidden bg-cream text-stone-900">
-        <CookingHeader
-          recipeId={recipe.id}
-          title={recipe.title}
-          voiceStatus={voice.status}
-          gesturesStatus={gestures.status}
-          heard={voice.heard}
-          voiceOn={voicePref}
-          voicePaused={speech.speaking}
-          onOpenHelp={openPanel}
-        />
-        <StepProgress stepIndex={state.stepIndex} stepCount={state.stepCount} />
+      <div ref={layoutRef} data-layout={layout} className="flex h-[100dvh] flex-col overflow-hidden bg-paper-2 text-ink">
+        <TopBar recipeId={recipe.id} title={recipe.title} stepIndex={state.stepIndex} stepCount={state.stepCount} onOpenHelp={openPanel} />
+        {layout === 'lg' ? null : heardStrip}
+        {layout === 'tabs' ? (
+          <CookingTabs
+            tab={state.tab}
+            onSelect={(next) => run({ type: 'showTab', tab: next }, 'tap')}
+            checkedCount={state.checked.size}
+            ingredientCount={state.ingredientCount}
+            runningTimers={runningCount}
+          />
+        ) : null}
 
         <main className="relative min-h-0 flex-1">
-          <div id="cooking-panel" role="tabpanel" aria-labelledby={`cooking-tab-${state.tab}`} className={`h-full min-h-0 ${PIP_RESERVE[mode]}`}>
-            {state.tab === 'steps' ? (
-              <StepView
-                stepNumber={stepNumber}
-                stepCount={state.stepCount}
-                instruction={step.instruction}
-                duration={step.duration}
-                stepTimer={stepTimer}
-                now={timers.now}
-                nextInstruction={nextStep?.instruction}
-                onStartTimer={() => run({ type: 'startTimer' }, 'tap')}
-                onToggleTimer={timers.toggle}
-              />
-            ) : state.tab === 'ingredients' ? (
-              <IngredientsView
-                ingredients={recipe.ingredients}
-                checked={state.checked}
-                onToggle={(index) => dispatch({ type: 'setIngredient', index })}
-                onCheckAll={(checked) => run({ type: 'checkAll', checked }, 'tap')}
-              />
-            ) : (
-              <TimersView
-                timers={timers.timers}
-              recipeId={recipe.id}
-                now={timers.now}
-                stepDuration={step.duration}
-                onStartPreset={startTimer}
-                onStartStepTimer={() => run({ type: 'startTimer' }, 'tap')}
-                onToggle={timers.toggle}
-                onReset={timers.reset}
-                onRemove={timers.remove}
-              />
-            )}
-          </div>
-          {panelOpen || finished ? null : (
-            <CameraPip
-              mode={mode}
-              status={gestures.status}
-              live={gestures.live}
-              videoRef={gestures.videoRef}
-              problemText={problemText}
-              onHidePreview={() => setCameraPreview(false)}
-              onShowPreview={() => setCameraPreview(true)}
-              onOpenHelp={openPanel}
-            />
+          {layout === 'lg' ? (
+            <div className="grid h-full grid-cols-[62fr_38fr] gap-4 p-4">
+              <div className="min-h-0 min-w-0">{stepTicket}</div>
+              <div className="flex min-h-0 min-w-0 flex-col gap-3 overflow-y-auto">
+                {heardStrip}
+                {pip}
+                <div ref={timersRef}>{timersPanel}</div>
+                <div ref={ingredientsRef}>{ingredientsPanel}</div>
+              </div>
+            </div>
+          ) : layout === 'md' ? (
+            <div className={`flex h-full flex-col gap-3 p-3 ${reserve}`}>
+              <div className="min-h-0 flex-[3]">{stepTicket}</div>
+              <div className="grid min-h-0 flex-[2] grid-cols-2 gap-3">
+                <div ref={ingredientsRef} className="min-h-0 overflow-y-auto">
+                  {ingredientsPanel}
+                </div>
+                <div ref={timersRef} className="min-h-0 overflow-y-auto">
+                  {timersPanel}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div id="cooking-panel" role="tabpanel" aria-labelledby={`cooking-tab-${state.tab}`} className={`h-full overflow-y-auto p-3 ${reserve}`}>
+              {state.tab === 'steps' ? <div className="h-full min-h-0">{stepTicket}</div> : state.tab === 'ingredients' ? ingredientsPanel : timersPanel}
+            </div>
           )}
+          {layout === 'lg' ? null : pip}
         </main>
 
-        <ControlBar
+        <ControlStrip
           isFirst={state.stepIndex === 0}
           isLast={state.stepIndex === state.stepCount - 1}
           speaking={speech.speaking}
@@ -431,20 +499,10 @@ function CookingSession({ recipe }: { recipe: Recipe }) {
           onRead={() => run({ type: 'repeat' }, 'tap')}
           onNext={() => run({ type: 'next' }, 'tap')}
         />
-        <CookingTabs
-          tab={state.tab}
-          onSelect={(tab) => run({ type: 'showTab', tab }, 'tap')}
-          checkedCount={state.checked.size}
-          ingredientCount={state.ingredientCount}
-          runningTimers={runningCount}
-        />
-
       </div>
 
-      <CommandToast toast={toast} onDismiss={() => setToast(null)} />
-
       {finished ? (
-        <CompletionDialog recipeTitle={recipe.title} onHome={() => navigate('/')} onReview={() => dispatch({ type: 'resume' })} />
+        <CompletionDialog recipeTitle={recipe.title} source={recipe.source} onHome={() => navigate('/')} onReview={() => dispatch({ type: 'resume' })} />
       ) : null}
       {panelOpen ? (
         <HandsFreePanel

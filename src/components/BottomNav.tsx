@@ -1,34 +1,28 @@
-import { NavLink } from 'react-router'
-import { Heart, Home, Search, Settings, type LucideIcon } from 'lucide-react'
+import { Link, useLocation } from 'react-router'
+import { NAV_ITEMS } from './navItems'
 
-const ITEMS: ReadonlyArray<{ to: string; label: string; icon: LucideIcon }> = [
-  { to: '/', label: 'Home', icon: Home },
-  { to: '/search', label: 'Search', icon: Search },
-  { to: '/favorites', label: 'Saved', icon: Heart },
-  { to: '/settings', label: 'Settings', icon: Settings },
-]
-
-/** Fixed bottom bar; pages leave room for it (see Page). Labels are always visible. */
+/** Phone only (hidden at md and up). Three labelled targets, at least 56 px tall. */
 export default function BottomNav() {
+  const { pathname } = useLocation()
   return (
-    <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-40 border-t border-stone-200 bg-white">
-      <ul className="mx-auto flex max-w-5xl">
-        {ITEMS.map(({ to, label, icon: Icon }) => (
-          <li key={to} className="flex-1">
-            <NavLink
-              to={to}
-              end={to === '/'}
-              className={({ isActive }) =>
-                `flex h-16 flex-col items-center justify-center gap-0.5 text-xs font-medium short:h-11 short:flex-row short:gap-2 short:text-sm ${
-                  isActive ? 'text-brand-700' : 'text-stone-600 hover:text-stone-900'
-                }`
-              }
-            >
-              <Icon size={22} aria-hidden="true" />
-              <span>{label}</span>
-            </NavLink>
-          </li>
-        ))}
+    <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-40 border-t border-ink-2 bg-paper md:hidden">
+      <ul className="mx-auto flex max-w-6xl">
+        {NAV_ITEMS.map((item) => {
+          const current = item.match(pathname)
+          return (
+            <li key={item.to} className="flex-1">
+              <Link
+                to={item.to}
+                aria-current={current}
+                className={`label-mono relative flex h-14 items-center justify-center whitespace-nowrap text-ink ${
+                  current ? 'bg-paper-2 font-extrabold underline decoration-2 underline-offset-8' : ''
+                }`}
+              >
+                {item.label}
+              </Link>
+            </li>
+          )
+        })}
       </ul>
     </nav>
   )

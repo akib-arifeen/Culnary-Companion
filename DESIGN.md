@@ -69,7 +69,7 @@ That is exactly this app's job, so the whole system borrows from it:
   - Quantities, times, timer clocks, step numbers, counts, header-strip labels, the HEARD strip.
   - Labels are UPPERCASE at weight 600 with tracking +0.06em.
 - **Scale.** Fluid `clamp()` values, defined in the Tailwind theme as the `--text-*` tokens below.
-  - `--text-step`: `clamp(1.6rem, 1.05rem + 2.6vw, 4.5rem)`, 700, line-height 1.12. Long steps (more than 140 characters) step down one rung to `--text-step-s`: `clamp(1.35rem, 0.95rem + 1.9vw, 3.25rem)`.
+  - `--text-step`: `clamp(1.75rem, min(0.75rem + 4.4vw, 9vh), 4.5rem)`, 700, line-height 1.12. That is about 29 px on a 390 phone, 46 px on a portrait tablet, 57 px at 1024 and the 72 px cap from about 1450 px; the `vh` term keeps short embeds (800×520) from overflowing. Long steps (more than 140 characters) step down one rung to `--text-step-s`: `clamp(1.4rem, min(0.7rem + 3.2vw, 7vh), 3.25rem)`.
   - `--text-clock`: `clamp(2.75rem, 1.8rem + 4vw, 6rem)`, mono, tabular.
   - `--text-title`: `clamp(1.75rem, 1.3rem + 1.6vw, 2.75rem)`, 800, tracking −0.01em.
   - `--text-ticket`: `1.125rem`, 800, for recipe ticket titles.
@@ -156,8 +156,8 @@ The wordmark (the mono label "CULINARY COMPANION" with a ticket-notch glyph), th
   --font-sans: "Atkinson Hyperlegible Next Variable", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Atkinson Hyperlegible Mono Variable", ui-monospace, monospace;
 
-  --text-step: clamp(1.6rem, 1.05rem + 2.6vw, 4.5rem);
-  --text-step-s: clamp(1.35rem, 0.95rem + 1.9vw, 3.25rem);
+  --text-step: clamp(1.75rem, min(0.75rem + 4.4vw, 9vh), 4.5rem);
+  --text-step-s: clamp(1.4rem, min(0.7rem + 3.2vw, 7vh), 3.25rem);
   --text-clock: clamp(2.75rem, 1.8rem + 4vw, 6rem);
   --text-title: clamp(1.75rem, 1.3rem + 1.6vw, 2.75rem);
   --text-ticket: 1.125rem;

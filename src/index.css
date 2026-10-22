@@ -1,22 +1,6 @@
 @import "tailwindcss";
 @import "./styles/tokens.css";
 
-/* LEGACY (pre-DESIGN.md) tokens, kept only until every screen is rebuilt; deleted in the final cleanup.
-   New code must use the DESIGN.md tokens in styles/tokens.css.
-   ds-allow-hardcode: legacy token source. */
-@theme {
-  --color-brand-50: #FFF7ED;
-  --color-brand-100: #FFEDD5;
-  --color-brand-200: #FED7AA;
-  --color-brand-400: #FB923C;
-  --color-brand-500: #F97316;
-  --color-brand-600: #EA580C;
-  --color-brand-700: #C2410C;
-  --color-brand-800: #9A3412;
-  --color-brand-900: #7C2D12;
-  --color-cream: #FFFBF6;
-}
-
 /* Short landscape viewports (embedded iframe ~800x520, phones sideways). */
 @custom-variant short (@media (max-height: 600px));
 

@@ -1,9 +1,23 @@
 import { Link, useNavigate, useParams } from 'react-router'
-import { ChefHat, Clock, Flame, Globe, Heart, Timer, Users } from 'lucide-react'
+import { Check } from 'lucide-react'
 import Page from '../components/Page'
+import { Button, ButtonLink, Label, Ticket } from '../components/ui/primitives'
 import { getRecipeById } from '../data/recipes'
+import { shortServes, shortTime } from '../lib/recipeMeta'
 import { useRecipeContext } from '../context/RecipeContext'
 
+const linkClass = 'underline underline-offset-3 decoration-2 hover:decoration-accent'
+
+function External({ href, children }: { href: string; children: string }) {
+  return (
+    <a href={href} target="_blank" rel="noopener noreferrer" className={linkClass}>
+      {children}
+      <span className="sr-only"> (opens in a new tab)</span>
+    </a>
+  )
+}
+
+/** Recipe ("Full ticket"): header, photo + CTA, Mise en place | Method, Credits. */
 const RecipeOverviewScreen = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -12,16 +26,12 @@ const RecipeOverviewScreen = () => {
 
   if (!recipe) {
     return (
-      <Page title="Recipe not found">
-        <div className="py-16 text-center">
-          <p className="mb-4 text-stone-700">We could not find that recipe.</p>
-          <Link
-            to="/"
-            className="inline-flex min-h-11 items-center rounded-lg bg-brand-700 px-5 py-2 text-sm font-semibold text-white hover:bg-brand-800"
-          >
-            Browse all recipes
-          </Link>
-        </div>
+      <Page>
+        <h1 className="text-title font-extrabold tracking-tight text-ink">Recipe not found</h1>
+        <p className="mt-3 max-w-prose text-lg text-ink-2">That recipe isn't on the rail.</p>
+        <ButtonLink to="/" className="mt-6 whitespace-nowrap">
+          Browse all recipes
+        </ButtonLink>
       </Page>
     )
   }
@@ -30,117 +40,121 @@ const RecipeOverviewScreen = () => {
   const progress = getCurrentStep(recipe.id)
   const resumeStep = progress === undefined ? undefined : Math.min(progress, recipe.steps.length - 1)
   const cookingPath = `/cooking/${recipe.id}`
+  const { photo, source } = recipe
 
+  // Strip: short forms and computed counts. The full source-stated strings are shown once, under the summary.
+  const serves = shortServes(recipe.servings)
+  const time = shortTime(recipe.time)
   const meta = [
-    { icon: Clock, label: 'Prep', value: `${recipe.prepTime} min` },
-    { icon: Flame, label: 'Cook', value: `${recipe.cookTime} min` },
-    { icon: Users, label: 'Servings', value: String(recipe.servings) },
-    { icon: ChefHat, label: 'Difficulty', value: recipe.difficulty },
-    { icon: Globe, label: 'Cuisine', value: recipe.cuisine },
-  ]
+    time,
+    serves ? `Serves ${serves}` : null,
+    `${recipe.steps.length} ${recipe.steps.length === 1 ? 'step' : 'steps'}`,
+  ].filter(Boolean)
+  const stated = [recipe.servings ? `Serves ${recipe.servings}` : null, recipe.time, recipe.category].filter(Boolean).join(' · ')
+  const revision = source.revisionUrl.match(/oldid=(\d+)/)?.[1]
 
   return (
-    <Page title={recipe.title} withActionBar>
-      <div className="grid gap-6 md:grid-cols-2 md:items-start">
-        <div className="space-y-4">
-          <img
-            src={recipe.image}
-            alt=""
-            width={960}
-            height={720}
-            className="aspect-16/10 w-full rounded-2xl object-cover short:aspect-16/7"
-          />
-          <dl className="grid grid-cols-3 gap-2 sm:grid-cols-5">
-            {meta.map(({ icon: Icon, label, value }) => (
-              <div key={label} className="rounded-lg bg-white p-2 text-center ring-1 ring-stone-200">
-                <Icon size={16} className="mx-auto mb-0.5 text-brand-700" aria-hidden="true" />
-                <dt className="text-xs text-stone-600">{label}</dt>
-                <dd className="text-sm font-semibold text-stone-900">{value}</dd>
+    <Page withActionBar>
+      <Link to="/" className="label-mono inline-flex min-h-11 items-center text-ink underline underline-offset-3 decoration-2">
+        ← All recipes
+      </Link>
+      <h1 className="mt-2 max-w-3xl text-title font-extrabold tracking-tight text-ink">{recipe.title}</h1>
+
+      <Ticket className="mt-5" header={<Label className="whitespace-nowrap text-ink">{meta.join(' · ')}</Label>} bodyClassName="p-4 sm:p-5">
+        <div className="grid gap-6 md:grid-cols-[3fr_2fr] md:items-start">
+          <figure className="min-w-0">
+            <img
+              src={photo.src}
+              alt={photo.alt}
+              width={photo.width}
+              height={photo.height}
+              className="aspect-4/3 w-full rounded-ticket border border-rule object-cover"
+            />
+            <figcaption className="mt-2 text-sm text-ink-2">
+              Photo: {photo.author},{' '}
+              {photo.licenseUrl ? <External href={photo.licenseUrl}>{photo.license}</External> : photo.license}, via{' '}
+              <External href={photo.filePage}>Wikimedia Commons</External>
+            </figcaption>
+          </figure>
+
+          <div className="flex min-w-0 flex-col gap-4">
+            <p className="max-w-prose text-xl text-ink">{recipe.summary}</p>
+            {stated ? <p className="max-w-prose text-ink-2">{stated}</p> : null}
+            <div className="flex flex-col gap-3">
+              {/* Phone: sticky bar above the bottom nav. md and up: sits in the column. */}
+              <div className="fixed inset-x-0 bottom-14 z-30 border-t border-ink-2 bg-paper p-3 md:static md:z-auto md:border-0 md:bg-transparent md:p-0">
+                <ButtonLink
+                  to={cookingPath}
+                  size="lg"
+                  onClick={() => {
+                    if (resumeStep === undefined) setInProgress(recipe.id, 0)
+                  }}
+                  className="w-full whitespace-nowrap md:w-auto"
+                >
+                  {resumeStep === undefined ? 'Start cooking' : `Resume at step ${resumeStep + 1}`}
+                </ButtonLink>
               </div>
-            ))}
-          </dl>
-        </div>
-
-        <div className="space-y-4">
-          <div className="flex items-start justify-between gap-3">
-            <h2 className="text-2xl font-bold text-stone-900">{recipe.title}</h2>
-            <button
-              type="button"
-              onClick={() => toggleFavorite(recipe.id)}
-              aria-pressed={saved}
-              aria-label={saved ? 'Remove from saved' : 'Save recipe'}
-              className={`flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-full border ${
-                saved
-                  ? 'border-brand-700 bg-brand-50 text-brand-700'
-                  : 'border-stone-300 bg-white text-stone-700 hover:border-brand-700 hover:text-brand-700'
-              }`}
-            >
-              <Heart size={20} className={saved ? 'fill-current' : ''} aria-hidden="true" />
-            </button>
-          </div>
-          <p className="text-stone-700">{recipe.description}</p>
-
-          <div className="fixed inset-x-0 bottom-16 z-30 flex gap-2 border-t border-stone-200 bg-white p-3 short:bottom-11 md:static md:z-auto md:border-0 md:bg-transparent md:p-0">
-            <Link
-              to={cookingPath}
-              onClick={() => {
-                if (resumeStep === undefined) setInProgress(recipe.id, 0)
-              }}
-              className="inline-flex min-h-12 grow items-center justify-center rounded-lg bg-brand-700 px-5 py-2 font-semibold text-white hover:bg-brand-800 md:grow-0"
-            >
-              {resumeStep === undefined ? 'Start cooking' : `Resume at step ${resumeStep + 1}`}
-            </Link>
-            {resumeStep !== undefined && (
-              <button
-                type="button"
-                onClick={() => {
-                  setInProgress(recipe.id, 0)
-                  navigate(cookingPath)
-                }}
-                className="inline-flex min-h-12 cursor-pointer items-center justify-center rounded-lg border border-stone-300 bg-white px-5 py-2 font-semibold text-stone-800 hover:bg-stone-50"
-              >
-                Start over
-              </button>
-            )}
+              <div className="flex flex-wrap gap-3">
+                <Button
+                  variant="secondary"
+                  aria-pressed={saved}
+                  onClick={() => toggleFavorite(recipe.id)}
+                  className={`whitespace-nowrap ${saved ? 'bg-ink! text-paper!' : ''}`}
+                >
+                  {saved ? <Check size={18} aria-hidden="true" /> : null}
+                  Save recipe
+                </Button>
+                {resumeStep !== undefined && (
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      setInProgress(recipe.id, 0)
+                      navigate(cookingPath)
+                    }}
+                    className="whitespace-nowrap"
+                  >
+                    Start over
+                  </Button>
+                )}
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+      </Ticket>
 
-      <div className="mt-8 grid gap-8 md:grid-cols-[2fr_3fr]">
-        <section aria-labelledby="ingredients-title">
-          <h2 id="ingredients-title" className="mb-3 text-lg font-semibold text-stone-900">
-            Ingredients
-          </h2>
-          <ul className="divide-y divide-stone-200 rounded-xl bg-white ring-1 ring-stone-200">
+      <Ticket className="mt-6" bodyClassName="grid p-0 md:grid-cols-[2fr_3fr]">
+        <section aria-labelledby="mise-title" className="min-w-0 p-4 sm:p-5">
+          <h2 id="mise-title" className="label-mono text-ink">Mise en place</h2>
+          <ul className="mt-3 divide-y divide-dashed divide-rule">
             {recipe.ingredients.map((ingredient) => (
-              <li key={ingredient.name} className="flex justify-between gap-3 px-3 py-2 text-sm">
-                <span className="font-medium text-stone-900">{ingredient.name}</span>
-                <span className="text-stone-600">
-                  {ingredient.amount} {ingredient.unit ?? ''}
-                </span>
+              <li key={ingredient.name} className="flex items-baseline justify-between gap-4 py-2.5">
+                <div className="min-w-0">
+                  <p className="font-bold text-ink">{ingredient.name}</p>
+                  {ingredient.note ? <p className="text-sm text-ink-2">{ingredient.note}</p> : null}
+                </div>
+                {ingredient.quantity ? (
+                  <p className="shrink-0 text-right font-mono font-semibold text-ink">{ingredient.quantity}</p>
+                ) : null}
               </li>
             ))}
           </ul>
         </section>
 
-        <section aria-labelledby="steps-title">
-          <h2 id="steps-title" className="mb-3 text-lg font-semibold text-stone-900">
-            Steps
-          </h2>
-          <ol className="space-y-3">
+        <section
+          aria-labelledby="method-title"
+          className="min-w-0 border-t-2 border-dashed border-rule p-4 sm:p-5 md:border-t-0 md:border-l-2"
+        >
+          <h2 id="method-title" className="label-mono text-ink">Method</h2>
+          <ol className="mt-3 divide-y divide-dashed divide-rule">
             {recipe.steps.map((step) => (
-              <li key={step.stepNumber} className="flex gap-3">
-                <span
-                  aria-hidden="true"
-                  className="flex size-7 shrink-0 items-center justify-center rounded-full bg-brand-700 text-sm font-bold text-white"
-                >
+              <li key={step.stepNumber} className="flex gap-4 py-3">
+                <span aria-hidden="true" className="w-9 shrink-0 font-mono text-3xl font-bold leading-none text-ink">
                   {step.stepNumber}
                 </span>
                 <div className="min-w-0">
-                  <p className="text-stone-800">{step.instruction}</p>
+                  <p className="max-w-prose text-lg text-ink">{step.instruction}</p>
                   {step.duration !== undefined && (
-                    <p className="mt-1 inline-flex items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-800">
-                      <Timer size={12} aria-hidden="true" />
+                    <p className="label-mono mt-2 inline-block rounded-full border-2 border-ink-2 px-3 py-0.5 text-ink">
                       {step.duration} min
                     </p>
                   )}
@@ -149,7 +163,24 @@ const RecipeOverviewScreen = () => {
             ))}
           </ol>
         </section>
-      </div>
+      </Ticket>
+
+      <section aria-labelledby="credits-title" className="mt-8 max-w-3xl space-y-2 text-sm text-ink-2">
+        <h2 id="credits-title" className="label-mono text-ink">Credits</h2>
+        <p>
+          Adapted from <External href={source.url}>{source.page}</External> (Wikibooks contributors),{' '}
+          <External href={source.licenseUrl}>{source.license}</External>. Changes: {source.changes.replace(/\.$/, '')}. Revision:{' '}
+          <a href={source.revisionUrl} target="_blank" rel="noopener noreferrer" className={linkClass}>
+            {revision ? `revision ${revision}` : source.revisionUrl}
+          </a>
+          .
+        </p>
+        <p>
+          Photo: {photo.author},{' '}
+          {photo.licenseUrl ? <External href={photo.licenseUrl}>{photo.license}</External> : photo.license}, via{' '}
+          <External href={photo.filePage}>Wikimedia Commons</External>.
+        </p>
+      </section>
     </Page>
   )
 }

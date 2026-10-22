@@ -30,15 +30,82 @@ vi.mock('../hooks/useGestureRecognizer', () => ({
   },
 }))
 
+// A FIXTURE recipe pair, so these tests do not depend on the real content: 6 steps, 2 with durations (steps 2 and 4),
+// ingredient names that appear in the step text, and no step text over 140 characters.
+vi.mock('../data/recipes', () => {
+  const photo = { src: '/x.webp', width: 4, height: 3, alt: 'x', filePage: 'https://example.org/f', author: 'A', license: 'CC BY 2.0' }
+  const source = {
+    page: 'Cookbook:Fixture',
+    url: 'https://en.wikibooks.org/wiki/Cookbook:Fixture',
+    revisionUrl: 'https://en.wikibooks.org/w/index.php?oldid=1',
+    license: 'CC BY-SA 4.0',
+    licenseUrl: 'https://creativecommons.org/licenses/by-sa/4.0/',
+    changes: 'Adapted into step-by-step format.',
+    retrieved: '2026-10-22',
+  }
+  const steps = (items: Array<[string, number?]>) =>
+    items.map(([instruction, duration], i) => ({ stepNumber: i + 1, instruction, ...(duration ? { duration } : {}) }))
+  const recipes = [
+    {
+      id: 'fixture-curry',
+      title: 'Fixture chicken curry',
+      summary: 'A curry.',
+      ingredients: [
+        { name: 'Chicken', quantity: '600 g' },
+        { name: 'Onion', quantity: '1 large' },
+        { name: 'Garlic', quantity: '3 cloves' },
+        { name: 'Coconut milk', quantity: '400 ml' },
+        { name: 'Rice', quantity: '2 cups' },
+        { name: 'Salt', quantity: '', note: 'to taste' },
+      ],
+      steps: steps([
+        ['Slice the onion and mince the garlic.'],
+        ['Fry the onion in a deep pan for 6 minutes until soft.', 6],
+        ['Add the chicken and the garlic, then stir until the chicken is browned.'],
+        ['Pour in the coconut milk and simmer for 20 minutes.', 20],
+        ['Cook the rice and season with salt.'],
+        ['Serve the curry over the rice.'],
+      ]),
+      photo,
+      source,
+    },
+    {
+      id: 'fixture-soup',
+      title: 'Fixture lentil soup',
+      summary: 'A soup.',
+      ingredients: [{ name: 'Lentils', quantity: '1 cup' }],
+      steps: steps([['Rinse the lentils.'], ['Boil the lentils.', 15], ['Season and serve.']]),
+      photo,
+      source,
+    },
+  ]
+  return { recipes, getRecipeById: (id: string) => recipes.find((r) => r.id === id) }
+})
+
+import { LAYOUT_QUERIES } from '../components/cooking/useCookingLayout'
 import { RecipeProvider } from '../context/RecipeContext'
 import { TimerProvider } from '../context/TimerContext'
 import { getRecipeById } from '../data/recipes'
 import { PREF_KEYS, writeJSON } from '../lib/storage'
 import CookingScreen from './CookingScreen'
 
-const recipe = getRecipeById('1')!
+const recipe = getRecipeById('fixture-curry')!
 const stepCount = recipe.steps.length
 const ingredientCount = recipe.ingredients.length
+
+/** jsdom has no matchMedia. The layout hook falls back to the phone layout; these tests opt in to a wider one. */
+function setLayout(layout: 'lg' | 'md' | 'tabs') {
+  window.matchMedia = ((query: string) => ({
+    matches: query === LAYOUT_QUERIES.lg ? layout === 'lg' : query === LAYOUT_QUERIES.md ? layout !== 'tabs' : false,
+    media: query,
+    onchange: null,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    addListener: () => {},
+    removeListener: () => {},
+    dispatchEvent: () => false,
+  })) as typeof window.matchMedia
+}
 
 function GoTo({ to }: { to: string }) {
   const navigate = useNavigate()
@@ -54,8 +121,8 @@ function renderAt(path: string) {
     <MemoryRouter initialEntries={[path]}>
       <RecipeProvider>
         <TimerProvider>
-          <GoTo to="/cooking/2" />
-          <GoTo to="/cooking/1" />
+          <GoTo to="/cooking/fixture-soup" />
+          <GoTo to="/cooking/fixture-curry" />
           <Routes>
             <Route path="/" element={<p>Home page</p>} />
             <Route path="/cooking/:id" element={<CookingScreen />} />
@@ -75,11 +142,15 @@ describe('CookingScreen', () => {
     fakes.speaking = false
     fakes.voiceStatus = 'off'
   })
-  afterEach(() => cleanup())
+  afterEach(() => {
+    cleanup()
+    // @ts-expect-error restore jsdom's lack of matchMedia
+    delete window.matchMedia
+  })
 
   it('starts on step 1 and moves with the arrow keys', async () => {
     const user = userEvent.setup()
-    renderAt('/cooking/1')
+    renderAt('/cooking/fixture-curry')
     expect(screen.getByText(`Step 1 of ${stepCount}`)).toBeTruthy()
     await user.keyboard('{ArrowRight}')
     expect(screen.getByText(`Step 2 of ${stepCount}`)).toBeTruthy()
@@ -89,7 +160,7 @@ describe('CookingScreen', () => {
 
   it('moves with the on-screen buttons and reads the new step aloud', async () => {
     const user = userEvent.setup()
-    renderAt('/cooking/1')
+    renderAt('/cooking/fixture-curry')
     await user.click(screen.getByRole('button', { name: 'Next step' }))
     expect(screen.getByText(`Step 2 of ${stepCount}`)).toBeTruthy()
     expect(fakes.speak).toHaveBeenCalledWith(`Step 2. ${recipe.steps[1].instruction}`)
@@ -97,7 +168,7 @@ describe('CookingScreen', () => {
 
   it('"i" shows the ingredients panel and ticking one updates the count', async () => {
     const user = userEvent.setup()
-    renderAt('/cooking/1')
+    renderAt('/cooking/fixture-curry')
     await user.keyboard('i')
     const panel = screen.getByRole('tabpanel', { name: /ingredients/i })
     expect(within(panel).getByText(`0 of ${ingredientCount} checked`)).toBeTruthy()
@@ -110,10 +181,10 @@ describe('CookingScreen', () => {
 
   it('finishing the last step opens the completion dialog', async () => {
     const user = userEvent.setup()
-    renderAt('/cooking/1')
+    renderAt('/cooking/fixture-curry')
     for (let i = 0; i < stepCount - 1; i++) await user.click(screen.getByRole('button', { name: 'Next step' }))
     await user.click(screen.getByRole('button', { name: 'Finish recipe' }))
-    const dialog = screen.getByRole('dialog', { name: /nicely done/i })
+    const dialog = screen.getByRole('dialog', { name: /nicely cooked/i })
     expect(within(dialog).getByText(recipe.title)).toBeTruthy()
     await user.click(within(dialog).getByRole('button', { name: 'Review steps' }))
     expect(screen.queryByRole('dialog')).toBeNull()
@@ -122,13 +193,13 @@ describe('CookingScreen', () => {
 
   it('"previous" from the completion dialog closes it and stays on the last step; other commands are ignored while it is up', async () => {
     const user = userEvent.setup()
-    renderAt('/cooking/1')
+    renderAt('/cooking/fixture-curry')
     for (let i = 0; i < stepCount - 1; i++) await user.click(screen.getByRole('button', { name: 'Next step' }))
     await user.click(screen.getByRole('button', { name: 'Finish recipe' }))
-    expect(screen.getByRole('dialog', { name: /nicely done/i })).toBeTruthy()
+    expect(screen.getByRole('dialog', { name: /nicely cooked/i })).toBeTruthy()
     act(() => fakes.onGesture?.('Victory'))
     act(() => fakes.onTranscript?.('timer for 5 minutes'))
-    expect(screen.getByRole('dialog', { name: /nicely done/i })).toBeTruthy()
+    expect(screen.getByRole('dialog', { name: /nicely cooked/i })).toBeTruthy()
     act(() => fakes.onTranscript?.('back'))
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(screen.getByText(`Step ${stepCount} of ${stepCount}`)).toBeTruthy()
@@ -137,7 +208,7 @@ describe('CookingScreen', () => {
 
   it('makes the background inert while the panel is open', async () => {
     const user = userEvent.setup()
-    renderAt('/cooking/1')
+    renderAt('/cooking/fixture-curry')
     const layout = screen.getByRole('tablist').parentElement!
     expect(layout.inert).toBe(false)
     await user.keyboard('?')
@@ -146,15 +217,15 @@ describe('CookingScreen', () => {
     expect(layout.inert).toBe(false)
   })
 
-  it('shows "couldn\'t find" in the toast when a spoken ingredient is unknown', () => {
-    renderAt('/cooking/1')
+  it('shows "couldn\'t find" in the HEARD strip when a spoken ingredient is unknown', () => {
+    renderAt('/cooking/fixture-curry')
     act(() => fakes.onTranscript?.('check unobtainium'))
     expect(screen.getByRole('status').textContent).toContain('couldn’t find')
   })
 
   it('"Back to recipes" in the completion dialog goes home', async () => {
     const user = userEvent.setup()
-    renderAt('/cooking/1')
+    renderAt('/cooking/fixture-curry')
     for (let i = 0; i < stepCount - 1; i++) await user.click(screen.getByRole('button', { name: 'Next step' }))
     await user.click(screen.getByRole('button', { name: 'Finish recipe' }))
     await user.click(screen.getByRole('button', { name: 'Back to recipes' }))
@@ -163,7 +234,7 @@ describe('CookingScreen', () => {
 
   it('"?" opens the hands-free panel, other shortcuts are inactive inside it, Escape closes it', async () => {
     const user = userEvent.setup()
-    renderAt('/cooking/1')
+    renderAt('/cooking/fixture-curry')
     expect(screen.queryByRole('dialog')).toBeNull()
     await user.keyboard('?')
     const dialog = screen.getByRole('dialog', { name: /hands-free|gestures/i })
@@ -177,7 +248,7 @@ describe('CookingScreen', () => {
   it('opens the onboarding panel on first visit and remembers that it was seen', async () => {
     window.localStorage.clear()
     const user = userEvent.setup()
-    renderAt('/cooking/1')
+    renderAt('/cooking/fixture-curry')
     const dialog = screen.getByRole('dialog', { name: /hands-free|gestures/i })
     expect(within(dialog).getByText(/Practised 0 of 6/)).toBeTruthy()
     // Gestures only practise while the panel is open; they must not move the recipe.
@@ -190,7 +261,7 @@ describe('CookingScreen', () => {
   })
 
   it('runs voice and gesture commands through the same dispatcher and shows feedback', () => {
-    renderAt('/cooking/1')
+    renderAt('/cooking/fixture-curry')
     act(() => fakes.onTranscript?.('next step'))
     expect(screen.getByText(`Step 2 of ${stepCount}`)).toBeTruthy()
     expect(screen.getByRole('status').textContent).toContain('Next step')
@@ -202,7 +273,7 @@ describe('CookingScreen', () => {
 
   it('starts a step timer from the keyboard and shows it in the Timers tab badge', async () => {
     const user = userEvent.setup()
-    renderAt('/cooking/1')
+    renderAt('/cooking/fixture-curry')
     await user.keyboard('t')
     expect(screen.getByRole('tab', { name: /timers, 1 running/i })).toBeTruthy()
     expect(fakes.speak).toHaveBeenCalledWith(expect.stringMatching(/^Timer set for/))
@@ -211,36 +282,38 @@ describe('CookingScreen', () => {
   })
 
   it('checks an ingredient by voice', () => {
-    renderAt('/cooking/1')
+    renderAt('/cooking/fixture-curry')
     act(() => fakes.onTranscript?.('check garlic'))
     expect(fakes.speak).toHaveBeenCalledWith('Garlic checked.')
     expect(screen.getByRole('tab', { name: new RegExp(`1 of ${ingredientCount} checked`) })).toBeTruthy()
   })
 
-  it('while speaking: the read button becomes "Stop reading" and the header says voice is paused', async () => {
+  it('while speaking: the read button becomes "Stop reading" and the HEARD strip says the mic is paused', async () => {
     fakes.speaking = true
     fakes.voiceStatus = 'on'
+    writeJSON(PREF_KEYS.voice, true)
     const user = userEvent.setup()
-    renderAt('/cooking/1')
-    expect(screen.getByRole('button', { name: /hands-free/i }).getAttribute('aria-label')).toContain('paused while speaking')
+    renderAt('/cooking/fixture-curry')
+    expect(screen.getByRole('status').textContent).toContain('Mic paused while I read')
+    expect(screen.getByRole('status').textContent).not.toContain('Listening')
     await user.click(screen.getByRole('button', { name: 'Stop reading' }))
     expect(fakes.cancel).toHaveBeenCalledTimes(1)
-    expect(screen.queryByRole('button', { name: 'Read step again' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Read it again' })).toBeNull()
   })
 
   it('shows the not-listening note in the panel while speaking', async () => {
     fakes.speaking = true
     const user = userEvent.setup()
-    renderAt('/cooking/1')
+    renderAt('/cooking/fixture-curry')
     await user.keyboard('?')
     expect(screen.getByText('Listening resumes when I finish speaking.')).toBeTruthy()
   })
 
   it('keeps step timers of different recipes apart and labels the other recipe', async () => {
     const user = userEvent.setup()
-    renderAt('/cooking/1')
+    renderAt('/cooking/fixture-curry')
     await user.keyboard('t')
-    await user.click(screen.getByRole('button', { name: 'go to /cooking/2' }))
+    await user.click(screen.getByRole('button', { name: 'go to /cooking/fixture-soup' }))
     await user.keyboard('t')
     await user.click(screen.getByRole('tab', { name: /timers/i }))
     expect(screen.getAllByRole('button', { name: /^Pause Step 1$/ })).toHaveLength(2)
@@ -248,7 +321,7 @@ describe('CookingScreen', () => {
   })
 
   it('a bare "start" with nothing paused creates no timer and says so', () => {
-    renderAt('/cooking/1')
+    renderAt('/cooking/fixture-curry')
     act(() => fakes.onTranscript?.('start'))
     expect(screen.getByRole('status').textContent).toContain('No paused timer')
     expect(fakes.speak).toHaveBeenCalledWith(expect.stringContaining('No paused timer'))
@@ -257,13 +330,106 @@ describe('CookingScreen', () => {
 
   it('ignores help (voice and keys) while the completion dialog is up', async () => {
     const user = userEvent.setup()
-    renderAt('/cooking/1')
+    renderAt('/cooking/fixture-curry')
     for (let i = 0; i < stepCount - 1; i++) await user.click(screen.getByRole('button', { name: 'Next step' }))
     await user.click(screen.getByRole('button', { name: 'Finish recipe' }))
     act(() => fakes.onTranscript?.('help'))
     await user.keyboard('?')
     expect(screen.getAllByRole('dialog')).toHaveLength(1)
-    expect(screen.getByRole('dialog', { name: /nicely done/i })).toBeTruthy()
+    expect(screen.getByRole('dialog', { name: /nicely cooked/i })).toBeTruthy()
+  })
+
+  it('HEARD strip: shows the mic state, the last understood command with what was heard, and the source', async () => {
+    fakes.voiceStatus = 'on'
+    writeJSON(PREF_KEYS.voice, true)
+    const user = userEvent.setup()
+    renderAt('/cooking/fixture-curry')
+    const strip = screen.getByRole('status')
+    expect(strip.textContent).toContain('Listening')
+    act(() => fakes.onTranscript?.('okay next please'))
+    expect(strip.textContent).toMatch(/Heard.*Next step.*“okay next please”/)
+    act(() => fakes.onGesture?.('Thumb_Down'))
+    expect(strip.textContent).toMatch(/Gesture.*Previous step/)
+    await user.keyboard('r')
+    expect(strip.textContent).toMatch(/Key.*Read step again/)
+    // A tap is not announced: the strip keeps the last thing understood.
+    await user.click(screen.getByRole('button', { name: 'Next step' }))
+    expect(strip.textContent).toMatch(/Key.*Read step again/)
+  })
+
+  it('HEARD strip: voice off offers "Turn on"; the camera state reads "Gestures off"', () => {
+    renderAt('/cooking/fixture-curry')
+    const strip = screen.getByRole('status')
+    expect(strip.textContent).toContain('Voice off')
+    expect(strip.textContent).toContain('Gestures off')
+    expect(within(strip).getByRole('button', { name: 'Turn on voice' })).toBeTruthy()
+  })
+
+  it('"THIS STEP" highlights exactly the ingredients the current step mentions', async () => {
+    const user = userEvent.setup()
+    renderAt('/cooking/fixture-curry')
+    await user.keyboard('i')
+    const panel = screen.getByRole('tabpanel', { name: /ingredients/i })
+    const marked = () => within(panel).queryAllByText('This step').map((el) => el.closest('label')?.textContent ?? '')
+    // Step 1: "Slice the onion and mince the garlic."
+    expect(marked()).toHaveLength(2)
+    expect(marked().join('|')).toMatch(/Onion/)
+    expect(marked().join('|')).toMatch(/Garlic/)
+    // Step 4: "Pour in the coconut milk and simmer for 20 minutes."
+    for (let i = 0; i < 3; i++) await user.click(screen.getByRole('button', { name: 'Next step' }))
+    await user.keyboard('i')
+    const after = within(screen.getByRole('tabpanel', { name: /ingredients/i }))
+      .queryAllByText('This step')
+      .map((el) => el.closest('label')?.textContent ?? '')
+    expect(after).toHaveLength(1)
+    expect(after[0]).toMatch(/Coconut milk/)
+  })
+
+  it('lg layout: the rail shows the HEARD strip, timers and ingredients together, with no tabs', async () => {
+    setLayout('lg')
+    const user = userEvent.setup()
+    renderAt('/cooking/fixture-curry')
+    const root = screen.getByRole('status').closest('[data-layout]')!
+    expect(root.getAttribute('data-layout')).toBe('lg')
+    expect(screen.queryByRole('tablist')).toBeNull()
+    expect(screen.queryByRole('tabpanel')).toBeNull()
+    expect(screen.getByRole('region', { name: 'Step 1' })).toBeTruthy()
+    expect(screen.getByRole('region', { name: 'Timers' })).toBeTruthy()
+    expect(screen.getByText(`0 of ${ingredientCount} checked`)).toBeTruthy()
+    // Everything stays reachable: ticking an ingredient and moving on work without any tab.
+    await user.click(screen.getAllByRole('checkbox')[0])
+    expect(screen.getByText(`1 of ${ingredientCount} checked`)).toBeTruthy()
+    await user.click(screen.getByRole('button', { name: 'Next step' }))
+    expect(screen.getByText(`Step 2 of ${stepCount}`)).toBeTruthy()
+  })
+
+  it('md layout: ingredients and timers sit below the step, still without tabs', () => {
+    setLayout('md')
+    renderAt('/cooking/fixture-curry')
+    expect(screen.getByRole('status').closest('[data-layout]')!.getAttribute('data-layout')).toBe('md')
+    expect(screen.queryByRole('tablist')).toBeNull()
+    expect(screen.getByRole('region', { name: 'Timers' })).toBeTruthy()
+    expect(screen.getByText(`0 of ${ingredientCount} checked`)).toBeTruthy()
+  })
+
+  it('phone layout (and no matchMedia at all): three tabs', () => {
+    renderAt('/cooking/fixture-curry')
+    expect(screen.getByRole('status').closest('[data-layout]')!.getAttribute('data-layout')).toBe('tabs')
+    expect(screen.getAllByRole('tab')).toHaveLength(3)
+  })
+
+  it('the start-timer button in the step header starts a timer for that step and turns into its clock', async () => {
+    const user = userEvent.setup()
+    renderAt('/cooking/fixture-curry')
+    // Step 1 states no duration, so there is no button.
+    expect(screen.queryByRole('button', { name: /^Start \d+-min timer$/ })).toBeNull()
+    await user.keyboard('{ArrowRight}')
+    await user.click(screen.getByRole('button', { name: 'Start 6-min timer' }))
+    expect(fakes.speak).toHaveBeenCalledWith(expect.stringMatching(/^Timer set for/))
+    expect(screen.queryByRole('button', { name: 'Start 6-min timer' })).toBeNull()
+    expect(screen.getByRole('button', { name: /^Pause step timer, / })).toBeTruthy()
+    await user.click(screen.getByRole('tab', { name: /timers, 1 running/i }))
+    expect(screen.getByRole('button', { name: /^Pause Step 2$/ })).toBeTruthy()
   })
 
   it('shows a friendly page for an unknown recipe', () => {

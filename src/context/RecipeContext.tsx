@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useMemo, type ReactNode } from 'react'
+import { recipes } from '../data/recipes'
 import { PREF_KEYS, readJSON, usePref, writeJSON } from '../lib/storage'
 
 interface RecipeContextType {
@@ -13,16 +14,21 @@ interface RecipeContextType {
 
 const RecipeContext = createContext<RecipeContextType | undefined>(undefined)
 
-/** Storage is user-editable and may hold anything; keep only what has the right shape. */
+/**
+ * Storage is user-editable and may hold anything; keep only what has the right shape AND names a recipe
+ * that exists. Ids saved by the previous dataset (numeric "1".."8") are dropped instead of listing nothing.
+ */
+const exists = (id: string) => recipes.some((recipe) => recipe.id === id)
+
 function cleanFavorites(raw: unknown): string[] {
-  return Array.isArray(raw) ? raw.filter((x): x is string => typeof x === 'string') : []
+  return Array.isArray(raw) ? raw.filter((x): x is string => typeof x === 'string' && exists(x)) : []
 }
 
 function cleanProgress(raw: unknown): { [key: string]: number } {
   const out: { [key: string]: number } = {}
   if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
     for (const [id, step] of Object.entries(raw)) {
-      if (typeof step === 'number' && Number.isInteger(step) && step >= 0) out[id] = step
+      if (exists(id) && typeof step === 'number' && Number.isInteger(step) && step >= 0) out[id] = step
     }
   }
   return out

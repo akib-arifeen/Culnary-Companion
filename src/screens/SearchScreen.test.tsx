@@ -1,10 +1,11 @@
 import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { RecipeProvider } from '../context/RecipeContext'
-import { recipes } from '../data/recipes'
 import SearchScreen from './SearchScreen'
+
+vi.mock('../data/recipes', async () => (await import('./recipeFixtures')).fixtureModule)
 
 function renderSearch() {
   return render(
@@ -16,49 +17,36 @@ function renderSearch() {
   )
 }
 
-const cardTitles = () => within(screen.getByRole('main')).queryAllByRole('heading', { level: 3 }).map((h) => h.textContent)
+const titles = () => within(screen.getByRole('main')).queryAllByRole('heading', { level: 3 }).map((h) => h.textContent)
 
-describe('SearchScreen', () => {
+describe('SearchScreen (/search = Recipes with the filter focused)', () => {
   beforeEach(() => window.localStorage.clear())
   afterEach(cleanup)
 
-  it('lists every recipe when the query is empty', () => {
+  it('focuses the filter', () => {
     renderSearch()
-    expect(cardTitles()).toHaveLength(recipes.length)
-    expect(screen.getByText(`${recipes.length} recipes`)).toBeTruthy()
+    expect(document.activeElement).toBe(screen.getByLabelText(/filter by title/i))
   })
 
-  it('filters by ingredient name, case-insensitively', async () => {
+  it('filters by ingredient name, case-insensitively, with a live count', async () => {
     renderSearch()
-    await userEvent.type(screen.getByLabelText('Search recipes'), 'FISH SAUCE')
-    expect(cardTitles()).toEqual(['Shrimp Pad Thai'])
-    expect(screen.getByText('1 result for "FISH SAUCE"')).toBeTruthy()
+    await userEvent.type(screen.getByLabelText(/filter by title/i), 'CHICKPEAS')
+    expect(titles()).toEqual(['Alpha Stew'])
+    expect(screen.getByText('1 of 2 match “CHICKPEAS”').getAttribute('aria-live')).toBe('polite')
   })
 
-  it('filters by cuisine and by difficulty', async () => {
+  it('also matches category', async () => {
     renderSearch()
-    const input = screen.getByLabelText('Search recipes')
-    await userEvent.type(input, 'italian')
-    expect(cardTitles()).toEqual(['Margherita Pizza', 'Penne with Meat Sauce'])
-
-    await userEvent.clear(input)
-    await userEvent.type(input, 'hard')
-    expect(cardTitles()).toEqual(['Margherita Pizza'])
+    await userEvent.type(screen.getByLabelText(/filter by title/i), 'main')
+    expect(titles()).toEqual(['Alpha Stew'])
   })
 
-  it('requires every typed word to match', async () => {
+  it('shows an empty state and clears the filter from it', async () => {
     renderSearch()
-    await userEvent.type(screen.getByLabelText('Search recipes'), 'italian chicken')
-    expect(cardTitles()).toEqual([])
-  })
-
-  it('shows an empty state and clears the search from it', async () => {
-    renderSearch()
-    await userEvent.type(screen.getByLabelText('Search recipes'), 'zzzz')
-    expect(screen.getByText('No recipes match your search')).toBeTruthy()
-    expect(screen.getByText('0 results for "zzzz"')).toBeTruthy()
-
-    await userEvent.click(screen.getByRole('button', { name: 'Clear search' }))
-    expect(cardTitles()).toHaveLength(recipes.length)
+    await userEvent.type(screen.getByLabelText(/filter by title/i), 'zzzz')
+    expect(screen.getByText('No recipe matches that')).toBeTruthy()
+    expect(screen.getByText('0 of 2 match “zzzz”')).toBeTruthy()
+    await userEvent.click(screen.getByRole('button', { name: 'Clear filter' }))
+    expect(titles()).toEqual(['Alpha Stew', 'Beta Toast'])
   })
 })

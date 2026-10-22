@@ -1,0 +1,43 @@
+__NOTOC__
+{{recipesummary
+| category = Flatbread recipes
+| servings = 4
+| time = 2 hours
+| difficulty = 3
+| Image = [[Image:Naan shiva.jpg|Naan|300px]]
+}}
+{{recipe}} | [[Cookbook:Cuisine of Pakistan|Pakistani Cuisine]] | [[Cookbook:Cuisine of India|Indian Cuisine]]
+
+'''Naan''' is a round [[Cookbook:Flatbread|flatbread]] made with white [[Cookbook:Flour|flour]] and is a staple accompaniment to hot meals in central and southern Asia.
+
+== Ingredients ==
+* 3 [[Cookbook:Cup|cups]] (450 [[Cookbook:Gram|g]]) plain [[Cookbook:Flour|flour]]
+* 1 cup (240 [[Cookbook:Milliliter|ml]]) [[Cookbook:Yogurt|yogurt]]
+* 1 [[Cookbook:Teaspoon|teaspoon]] [[Cookbook:Baking Soda|baking soda]]
+* 2 teaspoons [[Cookbook:Salt|salt]]
+* ¾ cup (180 ml) water
+
+== Procedure ==
+# Make the dough by [[Cookbook:Kneading|kneading]] together all the ingredients and sufficient water (this will be approximately ¾ cup but some judgement is required).
+# Wrap the dough in a damp muslin cloth and leave it to rise for 2–3 hours.
+# Divide the dough into small balls.
+# [[Cookbook:Dough#Rolling|Roll out]] the balls in oblong or round shapes with a [[Cookbook:Rolling Pin|rolling pin]] or by slapping and stretching with your hands.
+# Smear the surface with water and bake in a tandoor or preheated [[Cookbook:Oven|oven]] (as hot as your oven will go).
+# The naans should puff up a little, and be ready to remove from the oven in 4–5 minutes.
+# [[Cookbook:Brush|Brush]] the naan with butter. Serve hot.
+
+==Notes, tips, and variations==
+* To add an extra crispy finish, pop the baked naans under a preheated grill for 30 seconds before brushing with butter and serving.
+* To add extra flavour, consider adding finely-[[Cookbook:Chopping|chopped]] [[Cookbook:Garlic|garlic]] and coriander to the butter you brush over your cooked naan breads. Then return them to the oven (or place under a grill) for a short time to cook the garlic.
+
+[[Category:Recipes for flatbread]]
+[[Category:Pakistani recipes|{{PAGENAME}}]]
+[[Category:Indian recipes|{{PAGENAME}}]]
+[[Category:Recipes_with_metric_units|{{PAGENAME}}]]
+[[Category:Recipes with images|{{PAGENAME}}]]
+[[Category:Vegetarian recipes|{{PAGENAME}}]]
+[[Category:Recipes using baking soda]]
+[[Category:Recipes using all-purpose flour]]
+
+[[ko:난]]
+[[Category:Afghan recipes]]

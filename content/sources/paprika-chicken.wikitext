@@ -1,0 +1,48 @@
+{{recipesummary
+| category = Hungarian recipes
+| servings = 6–8 as main course
+| time = Prep: 15 minutes<br/>Cooking: ~65 minutes
+| difficulty = 3
+| Image = [[File:Paprikás Csirke Galuskával.jpg|300px]]
+}}
+{{recipe}} | [[Cookbook:Cuisine of Hungary|Cuisine of Hungary]] | [[Cookbook:Chicken|Chicken]]
+
+'''Paprika chicken''' is a dish of Hungarian origin traditionally made with chicken, paprika, and lard, served over pasta. There is no official recipe. Preparations of this dish often vary between families. In this Americanized version, sour cream is used in place of lard. Vegetables are optional—the traditional Hungarian version contains none. 
+
+==Ingredients==
+*1 ea. (2-3 [[Cookbook:Pound|pounds]]) [[Cookbook:Chicken|chicken]]
+*2 medium [[Cookbook:Onion|onions]], [[Cookbook:Chopping|chopped]]
+*2–4 [[Cookbook:Tablespoon|tablespoons]] sweet (not hot) [[Cookbook:Paprika|paprika]]
+*5–7 tablespoons [[Cookbook:Olive Oil|olive oil]]
+* 1 [[Cookbook:Cup|cup]] [[Cookbook:Sour cream|sour cream]]
+*¼–½ cup [[Cookbook:Cream|heavy cream]]
+*[[Cookbook:Salt|Salt]]
+*Fresh green [[Cookbook:Parsley|parsley]]
+*  6–7 whole black [[Cookbook:Peppercorn|peppercorns]]
+*  1 green [[Cookbook:Bell Pepper|bell pepper]] (optional)
+*&frac12; red bell pepper (optional)
+*1 [[Cookbook:Carrot|carrot]] (optional), thinly [[Cookbook:Slicing|sliced]]
+* 1 onion (optional), thinly sliced
+
+==Procedure==
+#Cut the chicken into eight pieces. 
+#Add the oil to a medium [[Cookbook:Sauté pan|sauté pan]]. [[Cookbook:Sautéing|Sauté]] the onions for about 3–4 minutes or until they turn yellow.
+#Add the chicken, peppercorns, salt, and paprika, and stir it rapidly. It is a lot of paprika, but it is '''not hot''' and this is a Paprikash. Add water immediately to cover the meat.
+#[[Cookbook:Simmering|Simmer]] over low heat. If using, add peppers and carrots after 10 minutes of simmering. Stir occasionally until the chicken is tender. If necessary add more water, but very sparingly. Do not boil the chicken—it should be almost fried in the end. This takes about 45–50  minutes. During the last 15 minutes, stop adding water and wait until the liquid is almost boiled off. Keep about a half finger's width of gravy on the bottom of the pan
+#Add the sour cream and heavy cream to the gravy and stir. Add fresh chopped parsley on the top.
+#Serve with dumplings, rice or mashed potatoes and salad. 
+
+==Notes, tips, and variations==
+
+* It is important not to use hot paprika, as this would make the soup too spicy and of the wrong consistency. In the United States, paprika is typically mild and sweet unless otherwise indicated.
+* If desired, for every carrot used add ⅓ [[Cookbook:Parsnip|parsnip]], thinly sliced. This takes away the slight sweetness of the carrot.
+* If you want to avoid the heavy cream, use more sour cream.
+
+[[Category:Recipes using whole chicken]]
+[[Category:Hungarian recipes]]
+[[Category:Recipes using paprika]]
+[[Category:Boiled recipes]]
+[[Category:Main course recipes]]
+[[Category:Recipes using red bell pepper]]
+[[Category:Recipes using green bell pepper]]
+[[Category:Recipes using carrot]]

@@ -1,136 +1,101 @@
-import { Link } from 'react-router'
-import { Clock, Hand, Mic, Volume2, type LucideIcon } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Button, ButtonLink, Label, Ticket } from '../components/ui/primitives'
 import Page from '../components/Page'
-import RecipeCard from '../components/RecipeCard'
+import RecipeRail from '../components/RecipeRail'
 import { getRecipeById, recipes } from '../data/recipes'
+import type { Recipe } from '../data/types'
 import { useRecipeContext } from '../context/RecipeContext'
 
-const HANDS_FREE: ReadonlyArray<{ icon: LucideIcon; title: string; text: string }> = [
-  { icon: Hand, title: 'Gestures', text: 'Thumb up for the next step, open palm to hear it again.' },
-  { icon: Mic, title: 'Voice', text: 'Say "next", "back" or "timer for five minutes".' },
-  { icon: Volume2, title: 'Read aloud', text: 'Each step is spoken as you move through the recipe.' },
-]
+/** Every word typed must appear in the title, category or an ingredient name. */
+function matches(recipe: Recipe, words: readonly string[]): boolean {
+  const haystack = [recipe.title, recipe.category ?? '', ...recipe.ingredients.map((i) => i.name)].join(' ').toLowerCase()
+  return words.every((word) => haystack.includes(word))
+}
 
-const primaryButton =
-  'inline-flex min-h-11 items-center justify-center rounded-lg bg-brand-700 px-5 py-2 text-sm font-semibold text-white hover:bg-brand-800'
-const secondaryButton =
-  'inline-flex min-h-11 items-center justify-center rounded-lg border border-stone-300 bg-white px-5 py-2 text-sm font-semibold text-stone-800 hover:bg-stone-50'
-
-const HomeScreen = () => {
+/** Recipes ("The Rail"). `/search` renders this with the filter focused. */
+const HomeScreen = ({ focusFilter = false }: { focusFilter?: boolean }) => {
   const { inProgress } = useRecipeContext()
-  const featured = recipes[0]
+  const [query, setQuery] = useState('')
+  const filterRef = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    if (focusFilter) filterRef.current?.focus()
+  }, [focusFilter])
 
-  const continuing = Object.entries(inProgress)
-    .map(([id, step]) => ({ recipe: getRecipeById(id), step }))
-    .filter((entry): entry is { recipe: NonNullable<typeof entry.recipe>; step: number } => entry.recipe !== undefined)
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean)
+  const results = words.length === 0 ? recipes : recipes.filter((recipe) => matches(recipe, words))
+
+  const resuming = Object.entries(inProgress).flatMap(([id, step]) => {
+    const recipe = getRecipeById(id)
+    return recipe ? [{ recipe, step: Math.min(step, recipe.steps.length - 1) }] : []
+  })
 
   return (
     <Page>
-      <div className="space-y-6 short:space-y-4">
-        <section
-          aria-labelledby="featured-title"
-          className="grid overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-xs md:grid-cols-2"
-        >
-          <img
-            src={featured.image}
-            alt=""
-            width={960}
-            height={720}
-            className="aspect-16/10 size-full object-cover md:aspect-auto short:aspect-16/6"
-          />
-          <div className="flex flex-col justify-center gap-3 p-4 md:p-6">
-            <p className="text-xs font-semibold uppercase tracking-wide text-brand-800">Featured</p>
-            <h2 id="featured-title" className="text-xl font-bold text-stone-900 md:text-2xl">
-              {featured.title}
-            </h2>
-            <p className="flex items-center gap-1.5 text-sm text-stone-600">
-              <Clock size={16} aria-hidden="true" />
-              {featured.prepTime + featured.cookTime} min · {featured.difficulty} · {featured.cuisine}
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <Link to={`/cooking/${featured.id}`} className={primaryButton}>
-                Start cooking
-              </Link>
-              <Link to={`/recipe/${featured.id}`} className={secondaryButton}>
-                View recipe
-              </Link>
-            </div>
-          </div>
-        </section>
+      <h1 className="text-title font-extrabold tracking-tight text-ink">Recipes</h1>
+      <p className="mt-2 max-w-prose text-lg text-ink-2">
+        Recipes you can follow from across the kitchen, by voice, hand gesture or tap.
+      </p>
 
-        {continuing.length > 0 && (
-          <section aria-labelledby="continue-title">
-            <h2 id="continue-title" className="mb-2 text-lg font-semibold text-stone-900">
-              Continue cooking
-            </h2>
-            <ul className="space-y-2">
-              {continuing.slice(0, 2).map(({ recipe, step }) => (
-                <li
-                  key={recipe.id}
-                  className="flex items-center gap-3 rounded-xl border border-stone-200 bg-white p-3"
-                >
-                  <img
-                    src={recipe.image}
-                    alt=""
-                    width={96}
-                    height={96}
-                    loading="lazy"
-                    className="size-14 shrink-0 rounded-lg object-cover"
-                  />
-                  <div className="min-w-0 grow">
-                    <p className="truncate font-semibold text-stone-900">{recipe.title}</p>
-                    <p className="text-sm text-stone-600">
-                      Step {Math.min(step + 1, recipe.steps.length)} of {recipe.steps.length}
-                    </p>
-                  </div>
-                  <Link to={`/cooking/${recipe.id}`} className={primaryButton}>
-                    Resume
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
-
-        <section aria-labelledby="handsfree-title" className="rounded-2xl bg-brand-50 p-4">
-          <div className="mb-3 flex items-baseline justify-between gap-2">
-            <h2 id="handsfree-title" className="text-lg font-semibold text-stone-900">
-              Cook hands-free
-            </h2>
-            <Link to={`/cooking/${featured.id}`} className="rounded text-sm font-semibold text-brand-800 underline">
-              Try it with {featured.title}
-            </Link>
-          </div>
-          <ul className="grid gap-3 sm:grid-cols-3">
-            {HANDS_FREE.map(({ icon: Icon, title, text }) => (
-              <li key={title} className="flex items-start gap-3">
-                <Icon size={22} className="mt-0.5 shrink-0 text-brand-700" aria-hidden="true" />
-                <p className="text-sm text-stone-700">
-                  <span className="font-semibold text-stone-900">{title}.</span> {text}
-                </p>
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        <section aria-labelledby="all-title">
-          <div className="mb-2 flex items-baseline justify-between gap-2">
-            <h2 id="all-title" className="text-lg font-semibold text-stone-900">
-              All recipes
-            </h2>
-            <Link to="/recents" className="rounded text-sm font-semibold text-brand-800 underline">
-              In progress
-            </Link>
-          </div>
-          <ul className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
-            {recipes.map((recipe) => (
-              <li key={recipe.id}>
-                <RecipeCard recipe={recipe} />
-              </li>
-            ))}
-          </ul>
-        </section>
+      <div className="mt-6 max-w-xl">
+        <label htmlFor="recipe-filter" className="label-mono mb-2 block text-ink-2">
+          Filter by title, ingredient or category
+        </label>
+        <input
+          id="recipe-filter"
+          ref={filterRef}
+          type="search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          autoComplete="off"
+          className="h-12 w-full rounded-control border-2 border-ink-2 bg-paper px-4 text-lg text-ink"
+        />
+        <p aria-live="polite" className="label-mono mt-2 text-ink-2">
+          {words.length === 0
+            ? `${recipes.length} ${recipes.length === 1 ? 'recipe' : 'recipes'}`
+            : `${results.length} of ${recipes.length} match “${query.trim()}”`}
+        </p>
       </div>
+
+      {resuming.length > 0 && (
+        <Ticket
+          className="mt-8"
+          header={<Label as="h2" className="text-ink">Pick up where you left off</Label>}
+          bodyClassName="p-0"
+        >
+          <ul className="divide-y divide-dashed divide-rule">
+            {resuming.map(({ recipe, step }) => (
+              <li key={recipe.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5">
+                <div className="min-w-0">
+                  <p className="text-ticket font-extrabold text-ink">{recipe.title}</p>
+                  <Label>
+                    Step {step + 1} of {recipe.steps.length}
+                  </Label>
+                </div>
+                <ButtonLink to={`/cooking/${recipe.id}`} aria-label={`Resume ${recipe.title}`} className="whitespace-nowrap">
+                  Resume
+                </ButtonLink>
+              </li>
+            ))}
+          </ul>
+        </Ticket>
+      )}
+
+      <section className="mt-8" aria-labelledby="rail-title">
+        <h2 id="rail-title" className="sr-only">
+          All recipes
+        </h2>
+        {results.length > 0 ? (
+          <RecipeRail recipes={results} label="Recipes" />
+        ) : (
+          <Ticket className="max-w-xl" bodyClassName="flex flex-col items-start gap-3 p-5 sm:p-6">
+            <h3 className="text-ticket font-extrabold text-ink">No recipe matches that</h3>
+            <p className="text-ink-2">Try one ingredient or a category, or clear the filter to see every recipe.</p>
+            <Button onClick={() => setQuery('')} className="whitespace-nowrap">
+              Clear filter
+            </Button>
+          </Ticket>
+        )}
+      </section>
     </Page>
   )
 }

@@ -1,9 +1,12 @@
-import { useId, useState } from 'react'
-import { ExternalLink } from 'lucide-react'
+import { useId, useState, type ReactNode } from 'react'
+import { Check } from 'lucide-react'
 import Page from '../components/Page'
+import { Button, Label, Ticket } from '../components/ui/primitives'
+import { recipes } from '../data/recipes'
 import { PREF_DEFAULTS, PREF_KEYS, usePref, writeJSON } from '../lib/storage'
 
 const REPO_URL = 'https://github.com/akib-arifeen/Culnary-Companion'
+const linkClass = 'underline underline-offset-3 decoration-2 hover:decoration-accent'
 
 interface SwitchRowProps {
   label: string
@@ -12,15 +15,16 @@ interface SwitchRowProps {
   onChange: (next: boolean) => void
 }
 
+/** A real switch: role="switch", and the state is spelled out (ON / OFF) as well as shown. */
 function SwitchRow({ label, description, checked, onChange }: SwitchRowProps) {
   const id = useId()
   return (
-    <li className="flex items-center justify-between gap-4 px-4 py-3">
+    <li className="flex items-center justify-between gap-4 py-3">
       <div className="min-w-0">
-        <p id={`${id}-label`} className="font-semibold text-stone-900">
+        <p id={`${id}-label`} className="text-lg font-bold text-ink">
           {label}
         </p>
-        <p id={`${id}-desc`} className="text-sm text-stone-600">
+        <p id={`${id}-desc`} className="max-w-prose text-ink-2">
           {description}
         </p>
       </div>
@@ -31,23 +35,35 @@ function SwitchRow({ label, description, checked, onChange }: SwitchRowProps) {
         aria-labelledby={`${id}-label`}
         aria-describedby={`${id}-desc`}
         onClick={() => onChange(!checked)}
-        className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
-          checked ? 'bg-brand-700' : 'bg-stone-400'
-        }`}
+        className="flex min-h-14 shrink-0 cursor-pointer items-center gap-3"
       >
+        <span className={`label-mono w-8 text-right ${checked ? 'text-ink' : 'text-ink-2'}`} aria-hidden="true">
+          {checked ? 'On' : 'Off'}
+        </span>
         <span
           aria-hidden="true"
-          className={`inline-block size-5 rounded-full bg-white transition-transform ${
-            checked ? 'translate-x-6' : 'translate-x-1'
+          className={`flex h-8 w-14 items-center rounded-full border-2 border-ink-2 px-0.5 transition-colors duration-(--dur-quick) ${
+            checked ? 'bg-ink' : 'bg-paper-2'
           }`}
-        />
+        >
+          <span
+            className={`block size-6 rounded-full transition-transform duration-(--dur-quick) ${
+              checked ? 'translate-x-6 bg-paper' : 'bg-ink-2'
+            }`}
+          />
+        </span>
       </button>
     </li>
   )
 }
 
-const outlineButton =
-  'min-h-11 cursor-pointer rounded-lg border border-stone-300 bg-white px-4 text-sm font-semibold text-stone-800 hover:bg-stone-50'
+function Group({ id, title, children }: { id: string; title: string; children: ReactNode }) {
+  return (
+    <Ticket as="section" header={<h2 id={id} className="label-mono text-ink">{title}</h2>} bodyClassName="px-4 py-2 sm:px-5">
+      {children}
+    </Ticket>
+  )
+}
 
 const SettingsScreen = () => {
   const [voice, setVoice] = usePref<boolean>(PREF_KEYS.voice, PREF_DEFAULTS[PREF_KEYS.voice])
@@ -59,13 +75,13 @@ const SettingsScreen = () => {
   const [status, setStatus] = useState('')
 
   return (
-    <Page title="Settings">
-      <div className="mx-auto max-w-2xl space-y-6">
-        <section aria-labelledby="handsfree-settings">
-          <h2 id="handsfree-settings" className="mb-2 text-lg font-semibold text-stone-900">
-            Hands-free
-          </h2>
-          <ul className="divide-y divide-stone-200 rounded-xl bg-white ring-1 ring-stone-200">
+    <Page>
+      <h1 className="text-title font-extrabold tracking-tight text-ink">Settings</h1>
+      <p className="mt-2 text-ink-2">Set up the station once; it remembers.</p>
+
+      <div className="mt-6 max-w-2xl space-y-6">
+        <Group id="handsfree-settings" title="Hands-free">
+          <ul className="divide-y divide-dashed divide-rule">
             <SwitchRow
               label="Voice commands"
               description="Say next, back, repeat or set a timer. Asks for microphone access when you turn it on."
@@ -79,96 +95,116 @@ const SettingsScreen = () => {
               onChange={setGestures}
             />
             <SwitchRow
-              label="Read steps aloud"
-              description="Speak each step as you reach it."
-              checked={speakSteps}
-              onChange={setSpeakSteps}
-            />
-            <SwitchRow
-              label="Show camera preview"
+              label="Camera preview"
               description="Show a small mirrored view of your camera while gestures are on."
               checked={cameraPreview}
               onChange={setCameraPreview}
             />
           </ul>
-          <div className="mt-3">
-            <button
-              type="button"
-              onClick={() => {
-                setOnboarded(false)
-                setStatus('The hands-free tutorial will play the next time you start cooking.')
-              }}
-              className={outlineButton}
-            >
-              Replay hands-free tutorial
-            </button>
-          </div>
-        </section>
+        </Group>
 
-        <section aria-labelledby="data-settings">
-          <h2 id="data-settings" className="mb-2 text-lg font-semibold text-stone-900">
-            Your data
-          </h2>
-          <div className="rounded-xl bg-white p-4 ring-1 ring-stone-200">
-            <p className="mb-3 text-sm text-stone-600">
-              Saved recipes and cooking progress are stored only in this browser.
-            </p>
-            {confirmingClear ? (
-              <div role="group" aria-label="Confirm clearing data" className="space-y-3">
-                <p className="text-sm font-semibold text-stone-900">
-                  Remove all saved recipes and in-progress steps? This cannot be undone.
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      writeJSON(PREF_KEYS.favorites, [])
-                      writeJSON(PREF_KEYS.progress, {})
-                      setConfirmingClear(false)
-                      setStatus('Saved recipes and progress cleared.')
-                    }}
-                    className="min-h-11 cursor-pointer rounded-lg bg-red-700 px-4 text-sm font-semibold text-white hover:bg-red-800"
-                  >
-                    Yes, clear everything
-                  </button>
-                  <button type="button" onClick={() => setConfirmingClear(false)} className={outlineButton}>
-                    Cancel
-                  </button>
+        <Group id="reading-settings" title="Reading">
+          <ul>
+            <SwitchRow
+              label="Read steps aloud"
+              description="Speak each step as you reach it."
+              checked={speakSteps}
+              onChange={setSpeakSteps}
+            />
+          </ul>
+        </Group>
+
+        <Group id="data-settings" title="Your data">
+          <div className="space-y-4 py-3">
+            <p className="max-w-prose text-ink-2">Saved recipes and cooking progress are stored only in this browser.</p>
+            <div className="flex flex-wrap items-start gap-3">
+            <Button
+                variant="secondary"
+                onClick={() => {
+                  setOnboarded(false)
+                  setStatus('The hands-free tutorial will play the next time you start cooking.')
+                }}
+                className="whitespace-nowrap"
+              >
+                Replay tutorial
+              </Button>
+              {confirmingClear ? (
+                <div role="group" aria-label="Confirm clearing data" className="space-y-3 border-t-2 border-dashed border-rule pt-4">
+                  <p className="max-w-prose font-bold text-accent">
+                    Remove all saved recipes and in-progress steps? This cannot be undone.
+                  </p>
+                  <div className="flex flex-wrap gap-3">
+                    <Button
+                      onClick={() => {
+                        writeJSON(PREF_KEYS.favorites, [])
+                        writeJSON(PREF_KEYS.progress, {})
+                        setConfirmingClear(false)
+                        setStatus('Saved recipes and progress cleared.')
+                      }}
+                      className="whitespace-nowrap"
+                    >
+                      Yes, clear everything
+                    </Button>
+                    <Button variant="secondary" onClick={() => setConfirmingClear(false)} className="whitespace-nowrap">
+                      Cancel
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <button type="button" onClick={() => setConfirmingClear(true)} className={outlineButton}>
-                Clear saved recipes and progress
-              </button>
-            )}
-          </div>
-        </section>
-
-        <p role="status" className="min-h-5 text-sm font-medium text-stone-800">
-          {status}
-        </p>
-
-        <section aria-labelledby="about-settings">
-          <h2 id="about-settings" className="mb-2 text-lg font-semibold text-stone-900">
-            About and privacy
-          </h2>
-          <div className="space-y-3 rounded-xl bg-white p-4 text-sm text-stone-700 ring-1 ring-stone-200">
-            <p>
-              Gesture recognition runs in your browser and camera video never leaves your device. Voice commands use
-              your browser's speech service; in Chrome this sends your audio to Google.
+              ) : (
+                <Button variant="secondary" onClick={() => setConfirmingClear(true)} className="whitespace-nowrap">
+                  Clear saved and progress
+                </Button>
+              )}
+            </div>
+            <p role="status" className="flex min-h-6 items-center gap-2 font-bold text-ink">
+              {status ? <Check size={18} aria-hidden="true" /> : null}
+              {status}
             </p>
-            <a
-              href={REPO_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded font-semibold text-brand-800 underline"
-            >
-              View the source on GitHub
-              <ExternalLink size={14} aria-hidden="true" />
-              <span className="sr-only">(opens in a new tab)</span>
-            </a>
           </div>
-        </section>
+        </Group>
+
+        <Group id="about-settings" title="About and credits">
+          <div className="space-y-4 py-3 text-ink">
+            <p className="max-w-prose">
+              Hand gestures run on this device; camera video never leaves it. Voice commands use your browser's speech
+              service, which in Chrome sends your audio to Google.
+            </p>
+            <p className="max-w-prose">
+              Recipe text is adapted from Wikibooks Cookbook by Wikibooks contributors under{' '}
+              <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer" className={linkClass}>
+                CC BY-SA 4.0
+                <span className="sr-only"> (opens in a new tab)</span>
+              </a>
+              . Photos are from Wikimedia Commons under the licence each file states.
+            </p>
+            <div>
+              <Label as="h3" className="text-ink">Sources</Label>
+              <ul className="mt-2 divide-y divide-dashed divide-rule">
+                {recipes.map((recipe) => (
+                  <li key={recipe.id} className="py-2 text-sm text-ink-2">
+                    <span className="font-bold text-ink">{recipe.title}:</span>{' '}
+                    <a href={recipe.source.url} target="_blank" rel="noopener noreferrer" className={linkClass}>
+                      {recipe.source.page}
+                      <span className="sr-only"> (opens in a new tab)</span>
+                    </a>
+                    . Photo:{' '}
+                    <a href={recipe.photo.filePage} target="_blank" rel="noopener noreferrer" className={linkClass}>
+                      {recipe.photo.author}, {recipe.photo.license}
+                      <span className="sr-only"> (opens in a new tab)</span>
+                    </a>
+                    .
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <p>
+              <a href={REPO_URL} target="_blank" rel="noopener noreferrer" className={`font-bold ${linkClass}`}>
+                View the source on GitHub
+                <span className="sr-only"> (opens in a new tab)</span>
+              </a>
+            </p>
+          </div>
+        </Group>
       </div>
     </Page>
   )

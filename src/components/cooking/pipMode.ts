@@ -1,19 +1,23 @@
 import type { MediaStatus } from '../../lib/mediaErrors'
 
-export type PipMode = 'none' | 'video' | 'pill' | 'problem'
+export type PipMode = 'none' | 'video' | 'pill'
 
-/** What the corner of the main area shows, so the screen can reserve room for it (nothing may overlap). */
-export function pipMode(opts: { gesturesOn: boolean; previewPref: boolean; gesturesStatus: MediaStatus; voiceProblem: boolean }): PipMode {
-  const { gesturesOn, previewPref, gesturesStatus, voiceProblem } = opts
-  if (gesturesOn && (gesturesStatus === 'denied' || gesturesStatus === 'unavailable' || gesturesStatus === 'error')) return 'problem'
+/**
+ * What the camera preview shows. Failures are not a PiP state any more: the HEARD strip owns every
+ * mic / camera problem (message plus "Try again"), so there is exactly one place to look.
+ */
+export function pipMode(opts: { gesturesOn: boolean; previewPref: boolean; gesturesStatus: MediaStatus }): PipMode {
+  const { gesturesOn, previewPref, gesturesStatus } = opts
   if (gesturesOn && (gesturesStatus === 'on' || gesturesStatus === 'starting')) return previewPref ? 'video' : 'pill'
-  return voiceProblem ? 'problem' : 'none'
+  return 'none'
 }
 
-/** Padding that keeps the main content clear of the corner element (classes written out in full for Tailwind). */
+/**
+ * Padding that keeps the content clear of the floating PiP in the bottom-right corner (nothing may overlap).
+ * Not needed on lg, where the preview lives in the rail. Classes written out in full for Tailwind.
+ */
 export const PIP_RESERVE: Record<PipMode, string> = {
   none: '',
-  video: 'pb-24 sm:pb-0 sm:pr-40 short:pb-0 short:pr-32',
-  pill: 'pb-12 sm:pb-0 sm:pr-40 short:pb-0 short:pr-40',
-  problem: 'pb-12 sm:pb-0 sm:pr-56 short:pb-0 short:pr-56',
+  video: 'pb-24 short:pb-0 short:pr-32',
+  pill: 'pb-16 short:pb-0 short:pr-48',
 }

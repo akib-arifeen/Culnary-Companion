@@ -9,9 +9,10 @@ interface CookingTabsProps {
   runningTimers: number
 }
 
+/** Step / Ingredients / Timers, for phones and short viewports. Wide screens show all three at once and render no tabs. */
 export default function CookingTabs({ tab, onSelect, checkedCount, ingredientCount, runningTimers }: CookingTabsProps) {
   const tabs: Array<{ id: CookingTab; label: string; Icon: LucideIcon; badge: string | null; name: string }> = [
-    { id: 'steps', label: 'Steps', Icon: ListOrdered, badge: null, name: 'Steps' },
+    { id: 'steps', label: 'Step', Icon: ListOrdered, badge: null, name: 'Step' },
     {
       id: 'ingredients',
       label: 'Ingredients',
@@ -28,7 +29,7 @@ export default function CookingTabs({ tab, onSelect, checkedCount, ingredientCou
     },
   ]
   return (
-    <div role="tablist" aria-label="Cooking views" className="flex h-14 shrink-0 border-t border-stone-200 bg-white">
+    <div role="tablist" aria-label="Cooking views" className="flex h-14 shrink-0 border-b border-rule bg-paper">
       {tabs.map(({ id, label, Icon, badge, name }) => {
         const selected = tab === id
         return (
@@ -41,19 +42,19 @@ export default function CookingTabs({ tab, onSelect, checkedCount, ingredientCou
             aria-controls="cooking-panel"
             aria-label={name}
             onClick={() => onSelect(id)}
-            className={`relative flex min-w-0 flex-1 cursor-pointer flex-col items-center justify-center gap-0.5 px-1 text-xs font-medium sm:flex-row sm:gap-2 sm:px-2 sm:text-base ${
-              selected ? 'text-brand-700' : 'text-stone-600 hover:bg-stone-50'
+            className={`label-mono relative flex min-w-0 flex-1 cursor-pointer flex-col items-center justify-center gap-0.5 px-1 sm:flex-row sm:gap-2 sm:px-2 ${
+              selected ? 'text-ink' : 'text-ink-2 hover:bg-paper-2'
             }`}
           >
-            <span aria-hidden="true" className={`absolute inset-x-4 top-0 h-0.5 rounded-full ${selected ? 'bg-brand-700' : 'bg-transparent'}`} />
+            <span aria-hidden="true" className={`absolute inset-x-3 bottom-0 h-1 ${selected ? 'bg-accent' : 'bg-transparent'}`} />
             <span className="relative sm:contents">
-              <Icon className="size-5 shrink-0" aria-hidden="true" />
+              <Icon className="size-5 shrink-0" strokeWidth={2} aria-hidden="true" />
               {badge ? (
                 <span
                   aria-hidden="true"
-                  className="absolute -top-1.5 left-full -ml-1.5 flex items-center gap-0.5 rounded-full bg-stone-100 px-1.5 text-[11px] font-semibold leading-4 tabular-nums text-stone-700 ring-1 ring-white sm:static sm:order-last sm:ml-0 sm:shrink-0 sm:gap-1 sm:px-2 sm:py-0.5 sm:text-sm sm:leading-normal sm:ring-0"
+                  className="absolute -top-1.5 left-full -ml-1 flex items-center gap-1 rounded-full bg-paper-2 px-1.5 font-mono text-label font-semibold tabular-nums text-ink ring-1 ring-rule sm:static sm:order-last sm:ml-0 sm:shrink-0"
                 >
-                  {id === 'timers' ? <span className="size-1.5 rounded-full bg-brand-500 motion-safe:animate-pulse sm:size-2" /> : null}
+                  {id === 'timers' ? <span className="live-pulse size-2 rounded-full bg-accent" /> : null}
                   {badge}
                 </span>
               ) : null}
