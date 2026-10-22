@@ -82,7 +82,10 @@ export function useSpeechCommands({ enabled, muted, onTranscript, lang = 'en-US'
     const Ctor = getCtor()
     if (!Ctor) {
       surface(describeMediaError('microphone', { name: 'UnsupportedError' }, ctx))
-      return
+      return () => {
+        setStatus('off')
+        setMessage(null)
+      }
     }
 
     let disabled = false

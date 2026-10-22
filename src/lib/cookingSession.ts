@@ -46,11 +46,14 @@ export function initCookingState(opts: { stepCount: number; ingredientCount: num
  * Pure reducer. Rules:
  *  - next: if not on the last step -> stepIndex + 1. On the last step -> finished = true (stepIndex unchanged).
  *    Always switches tab to 'steps'.
- *  - previous: stepIndex - 1 if > 0, and tab -> 'steps'. At step 0 with tab already 'steps' -> return the SAME state object.
+ *  - previous: stepIndex - 1 if > 0, tab -> 'steps', finished = false. When finished on the last step, previous only
+ *    clears finished (stays on the last step, so 'back' from the completion dialog returns to the final step).
+ *    At step 0 with tab already 'steps' and not finished -> return the SAME state object.
  *  - goToStep: valid index -> stepIndex = index, tab -> 'steps', finished = false. Invalid -> same object.
  *  - showTab: tab = action.tab (same object if unchanged).
  *  - toggleIngredients: 'ingredients' -> 'steps'; any other tab -> 'ingredients'.
  *  - setIngredient / checkAll: new Set; checkAll true = every index 0..ingredientCount-1, false = empty.
+ *    checkAll that changes nothing (already all / already none) -> SAME object.
  *  - resume: finished = false.
  * Any no-op returns the same state object so React skips the render.
  */
@@ -60,6 +63,7 @@ export function cookingReducer(state: CookingState, action: CookingAction): Cook
       if (state.stepIndex < state.stepCount - 1) return { ...state, stepIndex: state.stepIndex + 1, tab: 'steps' }
       return state.finished && state.tab === 'steps' ? state : { ...state, tab: 'steps', finished: true }
     case 'previous':
+      if (state.finished) return { ...state, tab: 'steps', finished: false }
       if (state.stepIndex > 0) return { ...state, stepIndex: state.stepIndex - 1, tab: 'steps' }
       return state.tab === 'steps' ? state : { ...state, tab: 'steps' }
     case 'goToStep': {
@@ -84,6 +88,8 @@ export function cookingReducer(state: CookingState, action: CookingAction): Cook
       return { ...state, checked }
     }
     case 'checkAll': {
+      const size = action.checked ? state.ingredientCount : 0
+      if (state.checked.size === size) return state
       const checked = new Set<number>()
       if (action.checked) for (let i = 0; i < state.ingredientCount; i++) checked.add(i)
       return { ...state, checked }

@@ -111,10 +111,15 @@ describe('parseVoiceCommand: rule 4, check/uncheck one ingredient', () => {
     ['check an onion', 'onion', true],
     ['tick some butter', 'butter', true],
     ['uncheck the coconut milk', 'coconut milk', false],
-    ['remove some salt', 'salt', false],
-    ['i have the eggs', 'eggs', true],
   ])('articles are stripped: %j -> %j', (phrase, query, checked) => {
     expect(parse(phrase)).toEqual({ type: 'checkIngredient', query, checked })
+  })
+
+  // Doc rule 4: "ambiguous: core starts with "remove X" (checked false) or "got X" | "i have X" | "ive got X" (checked true):
+  // returned ONLY when matchIngredient(X, ctx.ingredientNames) finds one" -> these two need Salt / Eggs in the context.
+  it('ambiguous verbs with the ingredient present, articles stripped', () => {
+    expect(parse('remove some salt', ['Salt'])).toEqual({ type: 'checkIngredient', query: 'salt', checked: false })
+    expect(parse('i have the eggs', ['Eggs'])).toEqual({ type: 'checkIngredient', query: 'eggs', checked: true })
   })
 
   it('works for ingredients that are not in the recipe list', () => {
@@ -452,4 +457,293 @@ describe('matchIngredient', () => {
       expect(idx(query, ['The', 'A', 'Garlic', 'I have a got', ''])).toBeNull()
     },
   )
+})
+
+describe('round 3: command-shaped grammar (doc "Must be null" / "Must match")', () => {
+  it.each([
+    'put the lid back on',
+    "i'll be right back",
+    'bring it back to a boil',
+    'is this the last step',
+    "it's next to the stove",
+    'add the next ingredient',
+    'is that enough salt',
+    'let me taste it again',
+    'can you help me find the pan',
+    'what do i need to do next',
+    'is the timer going',
+    "i'll be back in 5 minutes",
+    'give me one second',
+    'set a timer for 4 hours',
+    'i have a question',
+    'remove the pan from the heat',
+    'how long is left on the timer',
+  ])('must be null: %j', (phrase) => {
+    expect(parse(phrase)).toBeNull()
+  })
+
+  it.each([
+    ['next', { type: 'next' }],
+    ['okay next please', { type: 'next' }],
+    ['um next step', { type: 'next' }],
+    ['can you go back', { type: 'previous' }],
+    ['go back please', { type: 'previous' }],
+    ['say that again', { type: 'repeat' }],
+    ['what can i say', { type: 'help' }],
+    ['go to step 3', { type: 'goToStep', step: 3 }],
+    ['go to the next step', { type: 'next' }],
+    ['can you pause', { type: 'pauseTimer' }],
+    ['stop the timer', { type: 'pauseTimer' }],
+    ['cancel that timer', { type: 'cancelTimer' }],
+    ['pause my timer', { type: 'pauseTimer' }],
+    ['seven minutes', { type: 'startTimer', minutes: 7 }],
+    ['5 minutes please', { type: 'startTimer', minutes: 5 }],
+    ['set a timer for two and a half minutes', { type: 'startTimer', minutes: 3 }],
+  ] as Array<[string, Command]>)('must match: %j', (phrase, expected) => {
+    expect(parse(phrase)).toEqual(expected)
+  })
+
+  describe('command-shaped boundary: one stray word passes, two fail', () => {
+    it.each([
+      ['next one', { type: 'next' }],
+      ['go back please', { type: 'previous' }],
+      ['go back quickly', { type: 'previous' }],
+      ['repeat that', { type: 'repeat' }],
+      ['help me', { type: 'help' }],
+      ['stop talking now', { type: 'stopSpeaking' }],
+      ['quiet everyone', { type: 'stopSpeaking' }],
+    ] as Array<[string, Command]>)('one stray word: %j', (phrase, expected) => {
+      expect(parse(phrase)).toEqual(expected)
+    })
+
+    it.each([
+      'next big thing',
+      'go back there again',
+      'quiet down everyone',
+      'help me find it',
+      'stop it right now',
+      'repeat it for me',
+      'enough of this nonsense',
+    ])('two stray words: %j -> null', (phrase) => {
+      expect(parse(phrase)).toBeNull()
+    })
+
+    it('applies to timer phrases too', () => {
+      expect(parse('pause timer quickly')).toEqual({ type: 'pauseTimer' })
+      expect(parse('could you pause the timer')).toEqual({ type: 'pauseTimer' })
+      expect(parse('pause the timer for me please now')).not.toEqual({ type: 'pauseTimer' })
+    })
+  })
+
+  describe('rules 8/9 ordering (M02)', () => {
+    it('"stop, say that again" is command-shaped for rule 8 (3 + 1 words) -> repeat', () => {
+      expect(parse('stop, say that again')).toEqual({ type: 'repeat' })
+    })
+    it('"stop talking" -> stopSpeaking', () => {
+      expect(parse('stop talking')).toEqual({ type: 'stopSpeaking' })
+    })
+    it('"say that again" -> repeat, "stop" -> stopSpeaking', () => {
+      expect(parse('say that again')).toEqual({ type: 'repeat' })
+      expect(parse('stop')).toEqual({ type: 'stopSpeaking' })
+    })
+  })
+
+  describe('leading filler "can you" (M46)', () => {
+    it.each([
+      ['can you pause', { type: 'pauseTimer' }],
+      ['can you reset', { type: 'resetTimer' }],
+      ['could you resume', { type: 'resumeTimer' }],
+      ['would you repeat', { type: 'repeat' }],
+      ['will you go back', { type: 'previous' }],
+      ['hey next', { type: 'next' }],
+      ['so just next', { type: 'next' }],
+      ['uh now go on', { type: 'next' }],
+    ] as Array<[string, Command]>)('%j', (phrase, expected) => {
+      expect(parse(phrase)).toEqual(expected)
+    })
+  })
+
+  describe('timer determiners', () => {
+    it.each([
+      ['cancel that timer', { type: 'cancelTimer' }],
+      ['cancel this timer', { type: 'cancelTimer' }],
+      ['cancel my timer', { type: 'cancelTimer' }],
+      ['cancel our timer', { type: 'cancelTimer' }],
+      ['pause my timer', { type: 'pauseTimer' }],
+      ['pause that timer', { type: 'pauseTimer' }],
+      ['resume my timer', { type: 'resumeTimer' }],
+      ['reset this timer', { type: 'resetTimer' }],
+      ['turn that timer off', { type: 'cancelTimer' }],
+      ['turn off my timer', { type: 'cancelTimer' }],
+      ['show my timers', { type: 'showTab', tab: 'timers' }],
+    ] as Array<[string, Command]>)('%j', (phrase, expected) => {
+      expect(parse(phrase)).toEqual(expected)
+    })
+  })
+
+  describe('timers without a duration', () => {
+    it.each(['timer', 'set timer', 'start timer', 'new timer', 'step timer', 'set a timer', 'start the timer'])('%j -> startTimer {}', (phrase) => {
+      expect(parse(phrase)).toEqual({ type: 'startTimer' })
+    })
+
+    it.each(['is the timer going', 'how long is left on the timer', 'the timer is annoying me today'])('%j -> null', (phrase) => {
+      expect(parse(phrase)).toBeNull()
+    })
+  })
+
+  describe('durations', () => {
+    it.each([
+      ['timer for 7 minutes', 7],
+      ['set a timer for ten minutes', 10],
+      ['5 minute timer', 5],
+      ['set timer 3', 3],
+      ['set a timer for a minute', 1],
+      ['set a timer for two and a half minutes', 3],
+      ['timer for one and a half hours', 90],
+      ['timer for 1 hour 30 minutes', 90],
+      ['timer for 1 minute 30 seconds', 2],
+      ['timer for 90 seconds', 2],
+      ['timer for forty five minutes', 45],
+      ['timer for 3 hours', 180],
+    ])('with timer: %j -> %i', (phrase, minutes) => {
+      expect(parse(phrase)).toEqual({ type: 'startTimer', minutes })
+    })
+
+    it.each(['timer for 4 hours', 'timer for 0 minutes', 'set a timer for 181 minutes', 'timer for 200 minutes'])(
+      'out of range with timer: %j -> null (never a default-length timer)',
+      (phrase) => {
+        expect(parse(phrase)).toBeNull()
+      },
+    )
+
+    it.each([
+      ['seven minutes', 7],
+      ['5 minutes please', 5],
+      ['half an hour', 30],
+      ['ninety seconds', 2],
+      ['an hour and a half', 90],
+      ['okay ten minutes', 10],
+      ['one and a half hours', 90],
+    ])('without timer, core is only the duration: %j -> %i', (phrase, minutes) => {
+      expect(parse(phrase)).toEqual({ type: 'startTimer', minutes })
+    })
+
+    it.each([
+      "i'll be back in 5 minutes",
+      'wait two seconds',
+      'give me one second',
+      'just a minute',
+      'seven minutes later',
+      'leave it for seven minutes',
+      'a minute',
+      'an hour',
+    ])('without timer, duration plus other words: %j -> null', (phrase) => {
+      expect(parse(phrase)).toBeNull()
+    })
+
+    it('a bare number only counts as minutes together with "timer"', () => {
+      expect(parse('set timer 3')).toEqual({ type: 'startTimer', minutes: 3 })
+      expect(parse('3')).toBeNull()
+      expect(parse('five')).toBeNull()
+    })
+  })
+
+  describe('explicit vs ambiguous ingredient verbs', () => {
+    const withGarlic = ['Garlic', 'Chicken breast']
+
+    it.each([
+      ['check basil', 'basil', true],
+      ['tick basil', 'basil', true],
+      ['uncheck basil', 'basil', false],
+      ['untick basil', 'basil', false],
+      ['check the dragon fruit', 'dragon fruit', true],
+    ])('explicit verb, X not an ingredient: %j -> checkIngredient', (phrase, query, checked) => {
+      expect(parse(phrase, withGarlic)).toEqual({ type: 'checkIngredient', query, checked })
+    })
+
+    it.each(['got basil', 'remove basil', 'i have basil', "i've got basil", 'ive got basil'])('ambiguous verb, X not an ingredient: %j -> null', (phrase) => {
+      expect(parse(phrase, withGarlic)).toBeNull()
+    })
+
+    it.each([
+      ['got garlic', true],
+      ['i have garlic', true],
+      ["i've got garlic", true],
+      ['ive got garlic', true],
+      ['remove garlic', false],
+      ['got the garlic', true],
+    ])('ambiguous verb, X is an ingredient: %j -> checkIngredient', (phrase, checked) => {
+      expect(parse(phrase, withGarlic)).toEqual({ type: 'checkIngredient', query: 'garlic', checked })
+    })
+
+    it('pronoun-only X falls through, even for explicit verbs', () => {
+      for (const p of ['check it', 'check that', 'check this', 'tick them', 'uncheck those', 'check these', 'got it', 'remove this']) {
+        expect(parse(p, withGarlic), p).toBeNull()
+      }
+    })
+
+    it('ambiguous verbs only count at the start of core', () => {
+      expect(parse('i said i got garlic', withGarlic)).toBeNull()
+    })
+  })
+
+  describe('goToStep shapes', () => {
+    it.each([
+      ['step 3', 3],
+      ['go to step 3', 3],
+      ['jump to step three', 3],
+      ['show step 4', 4],
+      ['step 2 please', 2],
+      ['go to step 5 now', 5],
+      ['okay step seven', 7],
+      ['go to the step 3', 3],
+    ])('%j -> goToStep %i', (phrase, step) => {
+      expect(parse(phrase)).toEqual({ type: 'goToStep', step })
+    })
+
+    it.each(['step 0', 'go to step', 'step', 'i am on step 3 of the recipe', 'go to step 3 and then stir', 'what is step 3'])('%j is not goToStep', (phrase) => {
+      expect(parse(phrase)?.type).not.toBe('goToStep')
+    })
+  })
+
+  describe('rule 12 works on core', () => {
+    it('ignores filler around a bare ingredient name', () => {
+      expect(parse('okay garlic please')).toMatchObject({ type: 'checkIngredient' })
+      expect(parse('um coconut milk')).toMatchObject({ type: 'checkIngredient' })
+    })
+
+    it('uses the raw trimmed transcript as the query', () => {
+      expect(parse('  Garlic  ')).toEqual({ type: 'checkIngredient', query: 'Garlic' })
+    })
+
+    it('sentences that merely mention an ingredient are not matched when other words fail the lookup', () => {
+      expect(parse('add the garlic to the pan', ['Garlic'])).toBeNull()
+    })
+  })
+
+  describe('tabs', () => {
+    it.each([
+      ['show me ingredients', { type: 'showTab', tab: 'ingredients' }],
+      ['show me steps', { type: 'showTab', tab: 'steps' }],
+      ['ingredient list', { type: 'showTab', tab: 'ingredients' }],
+      ['next steps', { type: 'next' }],
+      ['previous steps', { type: 'previous' }],
+    ] as Array<[string, Command]>)('%j', (phrase, expected) => {
+      expect(parse(phrase)).toEqual(expected)
+    })
+  })
+
+  describe('rules 10/11 phrases', () => {
+    it.each([
+      ['move on', { type: 'next' }],
+      ['next one', { type: 'next' }],
+      ['go to next step', { type: 'next' }],
+      ['go back a step', { type: 'previous' }],
+      ['go to previous step', { type: 'previous' }],
+      ['one step back', { type: 'previous' }],
+      ['go to the previous step', { type: 'previous' }],
+    ] as Array<[string, Command]>)('%j', (phrase, expected) => {
+      expect(parse(phrase)).toEqual(expected)
+    })
+  })
 })

@@ -4,13 +4,32 @@
  */
 let ctx: AudioContext | null = null
 
+function getContext(): AudioContext | null {
+  if (ctx) return ctx
+  const w = window as unknown as { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext }
+  const Ctor = w.AudioContext ?? w.webkitAudioContext
+  if (!Ctor) return null
+  ctx = new Ctor()
+  return ctx
+}
+
+/**
+ * Creates and resumes the shared AudioContext. Call it from a user gesture: iOS only unlocks
+ * audio inside one, so a context first created in a timer callback stays silent. Safe to repeat.
+ */
+export function primeAudio(): void {
+  try {
+    const audio = getContext()
+    if (audio && audio.state === 'suspended') void audio.resume().catch(() => {})
+  } catch {
+    // Audio is a nicety.
+  }
+}
+
 export function playChime(): void {
   try {
-    const w = window as unknown as { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext }
-    const Ctor = w.AudioContext ?? w.webkitAudioContext
-    if (!Ctor) return
-    if (!ctx) ctx = new Ctor()
-    const audio = ctx
+    const audio = getContext()
+    if (!audio) return
     if (audio.state === 'suspended') void audio.resume().catch(() => {})
     const start = audio.currentTime
     for (let i = 0; i < 3; i++) {
@@ -32,4 +51,16 @@ export function playChime(): void {
   } catch {
     // Audio is a nicety; the visual and spoken completion still happen.
   }
+}
+
+// Unlock audio on the first user gesture. The context is deliberately NOT created before one,
+// so Chrome does not log "The AudioContext was not allowed to start".
+if (typeof window !== 'undefined') {
+  const unlock = () => {
+    window.removeEventListener('pointerdown', unlock, true)
+    window.removeEventListener('keydown', unlock, true)
+    primeAudio()
+  }
+  window.addEventListener('pointerdown', unlock, true)
+  window.addEventListener('keydown', unlock, true)
 }

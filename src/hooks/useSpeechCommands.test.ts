@@ -78,6 +78,16 @@ describe('useSpeechCommands', () => {
     expect(result.current.message).toBe('Voice commands need Chrome, Edge or Safari.')
   })
 
+  it('returns to off with the message cleared when disabled after an unsupported start', async () => {
+    Reflect.deleteProperty(window, 'SpeechRecognition')
+    const { result, rerender } = setup()
+    await flush()
+    expect(result.current.status).toBe('unavailable')
+    rerender({ enabled: false, muted: false })
+    expect(result.current.status).toBe('off')
+    expect(result.current.message).toBeNull()
+  })
+
   it('maps a getUserMedia NotAllowedError to denied and never starts recognition', async () => {
     getUserMedia.mockRejectedValue(Object.assign(new Error('x'), { name: 'NotAllowedError' }))
     const { result } = setup()
@@ -159,6 +169,67 @@ describe('useSpeechCommands', () => {
     expect(rec().start).toHaveBeenCalledTimes(2)
     act(() => void vi.advanceTimersByTime(2))
     expect(rec().start).toHaveBeenCalledTimes(3)
+  })
+
+  it('a result resets the backoff: after growth, one onresult then session end restarts at 300 ms, not 1200', async () => {
+    setup()
+    await flush()
+    act(() => rec().onend?.()) // short session 1 -> restart after 300
+    act(() => void vi.advanceTimersByTime(300))
+    expect(rec().start).toHaveBeenCalledTimes(2)
+    act(() => rec().onend?.()) // short session 2 -> restart after 600; backoff is now 1200
+    act(() => void vi.advanceTimersByTime(600))
+    expect(rec().start).toHaveBeenCalledTimes(3)
+    act(() => rec().say('hello'))
+    act(() => rec().onend?.())
+    act(() => void vi.advanceTimersByTime(299))
+    expect(rec().start).toHaveBeenCalledTimes(3)
+    act(() => void vi.advanceTimersByTime(2))
+    expect(rec().start).toHaveBeenCalledTimes(4)
+  })
+
+  it('without a result the backoff keeps growing past 600 ms (1200 on the third short session)', async () => {
+    setup()
+    await flush()
+    act(() => rec().onend?.())
+    act(() => void vi.advanceTimersByTime(300))
+    act(() => rec().onend?.())
+    act(() => void vi.advanceTimersByTime(600))
+    expect(rec().start).toHaveBeenCalledTimes(3)
+    act(() => rec().onend?.())
+    act(() => void vi.advanceTimersByTime(1199))
+    expect(rec().start).toHaveBeenCalledTimes(3)
+    act(() => void vi.advanceTimersByTime(2))
+    expect(rec().start).toHaveBeenCalledTimes(4)
+  })
+
+  describe('document visibility', () => {
+    afterEach(() => {
+      Reflect.deleteProperty(document, 'hidden')
+    })
+    const setHidden = (hidden: boolean) => Object.defineProperty(document, 'hidden', { configurable: true, get: () => hidden })
+
+    it('does not restart a session that ends while the document is hidden; restarts immediately when it becomes visible', async () => {
+      setup()
+      await flush()
+      expect(rec().start).toHaveBeenCalledTimes(1)
+      setHidden(true)
+      act(() => rec().onend?.())
+      act(() => void vi.advanceTimersByTime(10_000))
+      expect(rec().start).toHaveBeenCalledTimes(1)
+      setHidden(false)
+      act(() => void document.dispatchEvent(new Event('visibilitychange')))
+      expect(rec().start).toHaveBeenCalledTimes(2)
+    })
+
+    it('a visibilitychange while still hidden does not start', async () => {
+      setup()
+      await flush()
+      setHidden(true)
+      act(() => rec().onend?.())
+      act(() => void document.dispatchEvent(new Event('visibilitychange')))
+      expect(rec().start).toHaveBeenCalledTimes(1)
+    })
   })
 
   it('surfaces a fatal error status after three consecutive network errors', async () => {

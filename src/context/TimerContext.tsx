@@ -123,6 +123,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
   return <TimerContext.Provider value={value}>{children}</TimerContext.Provider>
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- hook colocated with its provider
 export function useTimers(): TimersApi {
   const ctx = useContext(TimerContext)
   if (!ctx) throw new Error('useTimers must be used inside <TimerProvider>')

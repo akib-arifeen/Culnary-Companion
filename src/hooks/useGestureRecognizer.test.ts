@@ -14,6 +14,7 @@ vi.mock('@mediapipe/tasks-vision', () => ({
 
 import { useGestureRecognizer as importedHook } from './useGestureRecognizer'
 let useGestureRecognizer = importedHook
+import { silenceMediaPipeLogs } from './useGestureRecognizer'
 
 function fakeStream() {
   const track = { stop: vi.fn() }
@@ -115,6 +116,27 @@ describe('useGestureRecognizer', () => {
     expect(result.current.live).toEqual({ gesture: null, progress: 0, handVisible: false })
   })
 
+  it('a frame callback already queued when the hook is disabled does not call recognizeForVideo', async () => {
+    getUserMedia.mockResolvedValue(fakeStream().stream)
+    const { result, rerender } = renderHook(({ enabled }) => useGestureRecognizer({ enabled, onGesture: vi.fn() }), {
+      initialProps: { enabled: true },
+    })
+    await waitFor(() => expect(result.current.status).toBe('on'))
+    mocks.recognizeForVideo.mockReturnValue(thumbUp)
+    frame()
+    expect(mocks.recognizeForVideo).toHaveBeenCalled()
+    // keep a copy of the pending callbacks: the cancelAnimationFrame stub clears the real queue
+    const stale = [...frameQueue]
+    expect(stale.length).toBeGreaterThan(0)
+    rerender({ enabled: false })
+    mocks.recognizeForVideo.mockClear()
+    now += 70
+    videoTime += 1
+    act(() => stale.forEach((cb) => cb()))
+    expect(mocks.recognizeForVideo).not.toHaveBeenCalled()
+    expect(result.current.status).toBe('off')
+  })
+
   it('ignores None and unknown labels', async () => {
     getUserMedia.mockResolvedValue(fakeStream().stream)
     const onGesture = vi.fn()
@@ -153,5 +175,36 @@ describe('useGestureRecognizer', () => {
     rerender({ enabled: false })
     rerender({ enabled: true })
     await waitFor(() => expect(result.current.status).toBe('on'))
+  })
+
+  describe('silenceMediaPipeLogs', () => {
+    const methods = ['log', 'info', 'warn', 'error'] as const
+    const saved = Object.fromEntries(methods.map((m) => [m, console[m]])) as Record<(typeof methods)[number], (...a: unknown[]) => void>
+    afterEach(() => {
+      for (const m of methods) console[m] = saved[m]
+    })
+
+    it('drops MediaPipe native lines, passes everything else through, and is idempotent', () => {
+      const originals = Object.fromEntries(methods.map((m) => [m, vi.fn()])) as Record<(typeof methods)[number], ReturnType<typeof vi.fn>>
+      for (const m of methods) console[m] = originals[m] as unknown as typeof console.log
+      silenceMediaPipeLogs()
+      const afterFirst = console.error
+      silenceMediaPipeLogs()
+      expect(console.error).toBe(afterFirst)
+
+      console.error('INFO: Created TensorFlow Lite XNNPACK delegate for CPU.')
+      console.log('Graph successfully started running.')
+      console.warn('W1022 12:14:58.366000 2191552 gl_context.cc:1135] OpenGL error checking is disabled')
+      console.log('I1022 12:14:58.272000 2191552 hand_gesture_recognizer_graph.cc:257] Custom gesture classifier is not defined.')
+      for (const m of methods) expect(originals[m]).not.toHaveBeenCalled()
+
+      const detail = { a: 1 }
+      console.error('real problem', detail)
+      console.warn('Graph successfully started running. (but not exactly)')
+      console.log(42)
+      expect(originals.error).toHaveBeenCalledExactlyOnceWith('real problem', detail)
+      expect(originals.warn).toHaveBeenCalledTimes(1)
+      expect(originals.log).toHaveBeenCalledExactlyOnceWith(42)
+    })
   })
 })

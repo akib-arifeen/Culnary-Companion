@@ -20,11 +20,6 @@ function tokenize(text: string): string[] {
     .filter(Boolean)
 }
 
-/** True when `phrase` (space separated) occurs in `tokens` as a contiguous run of whole words. */
-function hasPhrase(tokens: readonly string[], phrase: string): boolean {
-  return indexOfPhrase(tokens, phrase.split(' ')) >= 0
-}
-
 function indexOfPhrase(tokens: readonly string[], words: readonly string[]): number {
   for (let i = 0; i + words.length <= tokens.length; i++) {
     if (words.every((w, j) => tokens[i + j] === w)) return i
@@ -32,17 +27,13 @@ function indexOfPhrase(tokens: readonly string[], words: readonly string[]): num
   return -1
 }
 
-function hasAny(tokens: readonly string[], phrases: readonly string[]): boolean {
-  return phrases.some((p) => hasPhrase(tokens, p))
-}
-
 const LEADING_FILLERS = [
-  'okay', 'ok', 'um', 'uh', 'hey', 'please', 'now', 'just',
+  'okay', 'ok', 'um', 'uh', 'hey', 'please', 'now', 'just', 'so', 'and',
   'can you', 'could you', 'would you', 'will you',
 ]
-const TRAILING_FILLERS = ['please', 'now']
+const TRAILING_FILLERS = ['please', 'now', 'then']
 
-/** Strip filler words from both ends so "okay pause please" is bare "pause". */
+/** Strip filler words from both ends so "okay pause please" is "pause". */
 function stripFillers(tokens: readonly string[]): string[] {
   let out = [...tokens]
   let changed = true
@@ -65,8 +56,21 @@ function stripFillers(tokens: readonly string[]): string[] {
   return out
 }
 
+/** core = fillers stripped from both ends, then the/a/an removed. */
+function toCore(tokens: readonly string[]): string[] {
+  return stripFillers(tokens).filter((t) => t !== 'the' && t !== 'a' && t !== 'an')
+}
+
 function isBare(core: readonly string[], ...phrases: string[]): boolean {
   return phrases.some((p) => core.join(' ') === p)
+}
+
+/** COMMAND-SHAPED: core contains the phrase as whole words AND has at most one stray extra word. */
+function shaped(core: readonly string[], ...phrases: string[]): boolean {
+  return phrases.some((p) => {
+    const words = p.split(' ')
+    return core.length <= words.length + 1 && indexOfPhrase(core, words) >= 0
+  })
 }
 
 // ---------------------------------------------------------------------------
@@ -112,10 +116,23 @@ function durationTokens(text: string): string[] {
   return spaced.split(' ').filter(Boolean)
 }
 
-/** Sum of every "<number> <unit>" pair, in whole minutes (rounded up); with allowBare, a lone number means minutes. */
-function parseDuration(tokens: readonly string[], allowBare: boolean, allowArticle: boolean): number | null {
+interface DurationScan {
+  /** At least one quantity was recognised. */
+  found: boolean
+  /** Whole minutes, or null when nothing was found or the total is outside 1..180. */
+  minutes: number | null
+  /** How many tokens the quantities (plus joining "and"s) account for. */
+  consumed: number
+}
+
+/**
+ * Sum of every "<quantity> <unit>" pair ("<N> and a half <unit>" included), rounded UP to whole minutes.
+ * With allowBare a lone number means minutes; with allowArticle "a/an <unit>" means 1.
+ */
+function scanDuration(tokens: readonly string[], allowBare: boolean, allowArticle: boolean): DurationScan {
   let seconds = 0
   let found = false
+  let consumed = 0
   for (let i = 0; i < tokens.length; i++) {
     let value: number
     let len: number
@@ -124,208 +141,267 @@ function parseDuration(tokens: readonly string[], allowBare: boolean, allowArtic
       len = 1
     } else {
       const n = numberAt(tokens, i)
-      if (!n) continue
+      if (!n) {
+        if (found && tokens[i] === 'and') consumed++
+        continue
+      }
       value = n.value
       len = n.len
+      if (tokens[i + len] === 'and' && tokens[i + len + 1] === 'a' && tokens[i + len + 2] === 'half') {
+        if (tokens[i + len + 3] in UNIT_SECONDS) {
+          value += 0.5
+          len += 3
+        }
+      }
     }
     const unit = UNIT_SECONDS[tokens[i + len] ?? '']
     if (unit === undefined) continue
     seconds += value * unit
     found = true
+    consumed += len + 1
     i += len
   }
-  let minutes: number
   if (found) {
-    minutes = Math.ceil(seconds / 60)
-  } else if (allowBare) {
-    let bare: number | null = null
-    for (let i = 0; i < tokens.length && bare === null; i++) bare = numberAt(tokens, i)?.value ?? null
-    if (bare === null) return null
-    minutes = bare
-  } else {
-    return null
+    const minutes = Math.ceil(seconds / 60)
+    return { found, minutes: minutes >= 1 && minutes <= 180 ? minutes : null, consumed }
   }
-  return minutes >= 1 && minutes <= 180 ? minutes : null
-}
-
-function hasDurationUnit(tokens: readonly string[]): boolean {
-  return tokens.some((t) => t in UNIT_SECONDS) || hasPhrase(tokens, 'half hour') || hasPhrase(tokens, 'half an hour')
+  if (allowBare) {
+    for (let i = 0; i < tokens.length; i++) {
+      const n = numberAt(tokens, i)
+      if (n) return { found: true, minutes: n.value >= 1 && n.value <= 180 ? n.value : null, consumed: 0 }
+    }
+  }
+  return { found: false, minutes: null, consumed: 0 }
 }
 
 // ---------------------------------------------------------------------------
-// Rule table — ORDER IS THE PRIORITY ORDER from the doc comment above (first hit wins).
+// Rule table — ORDER IS THE PRIORITY ORDER from the doc comment below (first hit wins).
 // ---------------------------------------------------------------------------
 
 interface ParseInput {
   /** Raw transcript, trimmed. */
   raw: string
   tokens: string[]
-  /** tokens without "the", so "pause the timer" matches "pause timer". */
-  bare: string[]
-  /** tokens with leading/trailing filler words stripped. */
+  /** Fillers stripped, the/a/an removed. */
   core: string[]
+  /** core with the timer determiners that/this/my/our also removed. */
+  timerCore: string[]
   ctx: VoiceContext
 }
 
 type Rule = (input: ParseInput) => Command | null
 
-const ARTICLES = new Set(['the', 'a', 'an', 'some'])
 const PRONOUNS = new Set(['it', 'that', 'this', 'them', 'those', 'these'])
 
+/** The rest of core as an ingredient query: non-empty and not only pronouns. */
 function ingredientQuery(rest: readonly string[]): string | null {
-  let words = [...rest]
-  while (words.length > 0 && ARTICLES.has(words[0])) words = words.slice(1)
+  const words = rest[0] === 'some' ? rest.slice(1) : rest
   return words.length > 0 && !words.every((w) => PRONOUNS.has(w)) ? words.join(' ') : null
 }
 
+const AMBIGUOUS_VERBS: ReadonlyArray<[string, boolean]> = [
+  ['remove', false],
+  ['ive got', true],
+  ['i have', true],
+  ['got', true],
+]
+
 const RULES: readonly Rule[] = [
-  // 1. Timer phrases.
-  ({ raw, bare, core }) => {
-    const tokens = durationTokens(raw)
-    const hasTimerWord = bare.includes('timer') || bare.includes('timers')
+  // 1. Timers.
+  ({ raw, tokens, core, timerCore }) => {
+    if (shaped(timerCore, 'pause timer', 'stop timer', 'hold timer')) return { type: 'pauseTimer' }
+    if (shaped(timerCore, 'resume timer', 'continue timer')) return { type: 'resumeTimer' }
+    if (shaped(timerCore, 'reset timer', 'restart timer') || isBare(core, 'reset', 'restart')) return { type: 'resetTimer' }
+    if (
+      shaped(timerCore, 'cancel timer', 'remove timer', 'delete timer', 'clear timer', 'dismiss timer', 'turn off timer', 'turn timer off')
+    ) {
+      return { type: 'cancelTimer' }
+    }
+    if (shaped(timerCore, 'show timer', 'show timers', 'open timer', 'open timers') || isBare(core, 'timers')) {
+      return { type: 'showTab', tab: 'timers' }
+    }
+
+    const hasTimerWord = tokens.includes('timer') || tokens.includes('timers')
+    const dtokens = durationTokens(raw)
     if (hasTimerWord) {
-      const noArticles = bare.filter((t) => t !== 'a' && t !== 'an')
-      if (
-        hasAny(noArticles, [
-          'cancel timer', 'remove timer', 'delete timer', 'clear timer', 'dismiss timer', 'turn off timer', 'turn timer off',
-        ])
-      ) {
-        return { type: 'cancelTimer' }
-      }
-      if (hasAny(bare, ['pause timer', 'stop timer', 'hold timer'])) return { type: 'pauseTimer' }
-      if (hasAny(bare, ['resume timer', 'continue timer'])) return { type: 'resumeTimer' }
-      if (hasAny(bare, ['reset timer', 'restart timer'])) return { type: 'resetTimer' }
-      if (bare.includes('timers') || hasAny(bare, ['show timer', 'open timer'])) return { type: 'showTab', tab: 'timers' }
+      const scan = scanDuration(dtokens, true, true)
+      if (scan.found) return scan.minutes !== null ? { type: 'startTimer', minutes: scan.minutes } : null
+      if (shaped(timerCore, 'timer', 'set timer', 'start timer', 'new timer', 'step timer')) return { type: 'startTimer' }
+      return null
     }
-    if (hasTimerWord || hasDurationUnit(tokens)) {
-      const minutes = parseDuration(tokens, hasTimerWord, hasTimerWord)
-      if (minutes !== null) return { type: 'startTimer', minutes }
+    // No "timer" word: only when the whole utterance is the duration.
+    const dcore = stripFillers(dtokens)
+    const scan = scanDuration(dcore, false, false)
+    if (scan.found && scan.consumed === dcore.length && scan.minutes !== null) {
+      return { type: 'startTimer', minutes: scan.minutes }
     }
-    if (hasTimerWord) return { type: 'startTimer' }
-    if (isBare(core, 'reset', 'restart')) return { type: 'resetTimer' }
+
     if (isBare(core, 'pause', 'hold on')) return { type: 'pauseTimer' }
     if (isBare(core, 'resume', 'start')) return { type: 'resumeTimer' }
     return null
   },
   // 2. Uncheck all.
-  ({ tokens }) =>
-    hasAny(tokens, ['uncheck all', 'untick all', 'clear all', 'uncheck everything']) ? { type: 'checkAll', checked: false } : null,
+  ({ core }) =>
+    shaped(core, 'uncheck all', 'untick all', 'clear all', 'uncheck everything') ? { type: 'checkAll', checked: false } : null,
   // 3. Check all.
-  ({ tokens }) =>
-    hasAny(tokens, ['check all', 'tick all', 'check everything', 'got everything']) ? { type: 'checkAll', checked: true } : null,
+  ({ core }) =>
+    shaped(core, 'check all', 'tick all', 'check everything', 'got everything') ? { type: 'checkAll', checked: true } : null,
   // 4. Check / uncheck one ingredient.
-  ({ core }) => {
-    const prefixes: ReadonlyArray<[string, boolean]> = [
+  ({ core, ctx }) => {
+    const explicit: ReadonlyArray<[string, boolean]> = [
       ['uncheck', false],
       ['untick', false],
-      ['remove', false],
       ['check', true],
       ['tick', true],
-      ['ive got', true],
-      ['i have', true],
-      ['got', true],
     ]
-    for (const [prefix, checked] of prefixes) {
+    for (const [verb, checked] of explicit) {
+      if (core.length > 1 && core[0] === verb) {
+        const query = ingredientQuery(core.slice(1))
+        if (query !== null) return { type: 'checkIngredient', query, checked }
+      }
+    }
+    for (const [prefix, checked] of AMBIGUOUS_VERBS) {
       const words = prefix.split(' ')
       if (core.length > words.length && words.every((w, i) => core[i] === w)) {
         const query = ingredientQuery(core.slice(words.length))
-        if (query !== null) return { type: 'checkIngredient', query, checked }
+        if (query !== null && matchIngredient(query, ctx.ingredientNames) !== null) {
+          return { type: 'checkIngredient', query, checked }
+        }
       }
     }
     return null
   },
   // 5. Go to step N.
-  ({ tokens }) => {
-    for (let i = 0; i < tokens.length - 1; i++) {
-      if (tokens[i] !== 'step') continue
-      const n = numberAt(tokens, i + 1)
-      if (n && n.value >= 1) return { type: 'goToStep', step: n.value }
+  ({ core }) => {
+    for (const prefix of [['step'], ['go', 'to', 'step'], ['jump', 'to', 'step'], ['show', 'step']]) {
+      if (!prefix.every((w, i) => core[i] === w)) continue
+      const n = numberAt(core, prefix.length)
+      if (n && n.value >= 1 && core.length - prefix.length - n.len <= 1) return { type: 'goToStep', step: n.value }
     }
     return null
   },
   // 6. Tabs.
-  ({ tokens }) => {
-    if (hasAny(tokens, ['ingredients', 'ingredient list', 'what do i need'])) return { type: 'showTab', tab: 'ingredients' }
-    if (hasAny(tokens, ['instructions', 'method'])) return { type: 'showTab', tab: 'steps' }
-    // "next steps" / "previous steps" are navigation, not the steps tab.
-    if (tokens.some((t, i) => t === 'steps' && tokens[i - 1] !== 'next' && tokens[i - 1] !== 'previous')) {
-      return { type: 'showTab', tab: 'steps' }
+  ({ core }) => {
+    if (shaped(core, 'ingredients', 'show ingredients', 'show me ingredients', 'ingredient list', 'what do i need')) {
+      return { type: 'showTab', tab: 'ingredients' }
+    }
+    // "next steps" / "previous steps" are speech-engine variants of "next step", not the steps tab.
+    if (!shaped(core, 'next steps', 'previous steps')) {
+      if (shaped(core, 'steps', 'show steps', 'show me steps', 'instructions', 'method', 'back to steps', 'go back to steps')) {
+        return { type: 'showTab', tab: 'steps' }
+      }
     }
     return null
   },
   // 7. Help.
-  ({ tokens }) => (hasAny(tokens, ['help', 'what can i say', 'commands']) ? { type: 'help' } : null),
+  ({ core }) => (shaped(core, 'help', 'what can i say', 'commands', 'show help') ? { type: 'help' } : null),
   // 8. Repeat.
-  ({ tokens }) =>
-    hasAny(tokens, ['repeat', 'again', 'say that again', 'read it again', 'what was that', 'pardon', 'come again']) ? { type: 'repeat' } : null,
+  ({ core }) =>
+    shaped(core, 'repeat', 'again', 'say again', 'say that again', 'read again', 'read it again', 'what was that', 'pardon', 'come again')
+      ? { type: 'repeat' }
+      : null,
   // 9. Stop speaking.
-  ({ tokens }) => (hasAny(tokens, ['stop', 'quiet', 'shush', 'silence', 'enough']) ? { type: 'stopSpeaking' } : null),
+  ({ core }) =>
+    shaped(core, 'stop', 'quiet', 'be quiet', 'shush', 'stop talking', 'silence', 'enough') ? { type: 'stopSpeaking' } : null,
   // 10. Next.
-  ({ tokens }) => (hasAny(tokens, ['next', 'continue', 'go on', 'forward']) ? { type: 'next' } : null),
+  ({ core }) =>
+    shaped(core, 'next', 'next step', 'next steps', 'continue', 'go on', 'forward', 'go forward', 'move on', 'next one', 'go to next step')
+      ? { type: 'next' }
+      : null,
   // 11. Previous.
-  ({ tokens }) => (hasAny(tokens, ['back', 'previous', 'last step']) ? { type: 'previous' } : null),
+  ({ core }) =>
+    shaped(core, 'back', 'go back', 'previous', 'previous step', 'previous steps', 'last step', 'step back', 'go back step', 'go to previous step', 'one step back')
+      ? { type: 'previous' }
+      : null,
   // 12. Bare ingredient name.
-  ({ raw, ctx }) => (matchIngredient(raw, ctx.ingredientNames) !== null ? { type: 'checkIngredient', query: raw } : null),
+  ({ raw, core, ctx }) => (matchIngredient(core.join(' '), ctx.ingredientNames) !== null ? { type: 'checkIngredient', query: raw } : null),
 ]
 
 /**
  * Turn one final speech transcript into a command, or null if nothing matches.
  *
- * Normalisation: lowercase, punctuation stripped, whitespace collapsed. Matching is
- * by WHOLE WORDS / whole phrases only — "background" must never match "back",
- * "restarting" must never match "start".
+ * The microphone stays open in a noisy kitchen, so the grammar accepts COMMAND-SHAPED
+ * utterances only. A false positive (jumping a step because someone said "put the lid back on")
+ * costs more than a miss (the user just says the command again).
+ *
+ * Normalisation: lowercase, punctuation stripped, whitespace collapsed. Matching is by WHOLE
+ * WORDS / whole phrases only — "background" never matches "back", "restarting" never "start".
+ * `core` = the tokens with filler stripped from both ends (leading: okay, ok, um, uh, hey, please,
+ * now, just, so, and, can you, could you, would you, will you; trailing: please, now, then) and
+ * with the determiners the/a/an removed. Duration parsing uses the full token stream (it needs "a").
+ * COMMAND-SHAPED for a phrase P means: core contains P as a contiguous run of whole words AND
+ * core.length <= P.length + 1 (one stray word allowed: "next one", "go back please" -> "go back").
  *
  * Rules, checked in this priority order (first hit wins):
- *  1. Timer phrases (anything containing the word "timer", or a duration):
- *     - "pause timer" | "stop timer" | "pause the timer" | "hold timer"       -> pauseTimer
- *     - "resume timer" | "continue timer" | "resume the timer"                -> resumeTimer
- *     - "reset timer" | "restart timer" | "reset the timer" | "restart"       -> resetTimer
- *       (bare "reset" and bare "restart" also -> resetTimer)
- *     - "cancel timer" | "remove timer" | "delete timer" | "clear timer" | "dismiss timer" |
- *       "turn off timer" | "turn the timer off" (the/a allowed anywhere)      -> cancelTimer
- *     - "show timer(s)" | "open timer(s)" | "timers"                          -> showTab timers
- *     - any phrase with a duration: "timer for 7 minutes", "set a timer for ten minutes",
- *       "5 minute timer", "seven minutes", "set timer 3", "half an hour", "timer for an hour",
- *       "90 seconds" (rounded UP to whole minutes, min 1)                      -> startTimer { minutes }
- *     - "timer" | "set a timer" | "start a timer" | "start timer" | "start the timer" (no duration)
- *                                                                              -> startTimer {}
- *     - bare "pause" | "hold on"                                              -> pauseTimer
- *     - bare "resume" | bare "start"                                          -> resumeTimer
- *     A bare number with no unit and no "timer" word ("five", "5") is NOT a duration -> null.
- *     "a"/"an" as the quantity ("a minute", "an hour", "a second") counts ONLY when the word "timer"
- *     is present, so everyday phrases like "just a minute", "wait a second", "give me an hour"
- *     are NOT timers (-> fall through to later rules, usually null). "half an hour" and
- *     "an hour and a half" still count without "timer" (they are unambiguous requests).
- *  2. "uncheck all" | "untick all" | "clear all" | "uncheck everything"       -> checkAll false
- *  3. "check all" | "tick all" | "check everything" | "got everything"        -> checkAll true
- *  4. "uncheck X" | "untick X" | "remove X"                                   -> checkIngredient { query: X, checked: false }
- *     "check X" | "tick X" | "got X" | "i have X" | "i've got X"              -> checkIngredient { query: X, checked: true }
- *     (X = the rest of the phrase with leading articles "the/a/an/some" removed; X must be non-empty and
- *     must not be only a pronoun — "got it", "check that", "remove this", "got them" fall through, e.g. to null)
- *  5. "step N" | "go to step N" | "jump to step N" (N digits or number words, >= 1) -> goToStep { step: N }
- *  6. "ingredients" | "show ingredients" | "ingredient list" | "what do i need" -> showTab ingredients
- *     "steps" | "show steps" | "instructions" | "method" | "back to steps" | "go back to steps" -> showTab steps
- *     (but "next steps" / "previous steps" are speech-engine variants of "next step" -> not a tab; fall through)
- *  7. "help" | "what can i say" | "commands" | "show help"                     -> help
- *  8. "repeat" | "again" | "say again" | "say that again" | "read again" | "read it again" |
- *     "what was that" | "pardon" | "come again"                              -> repeat
- *  9. "stop" | "quiet" | "be quiet" | "shush" | "stop talking" | "silence" | "enough" -> stopSpeaking
- * 10. "next" | "next step" | "continue" | "go on" | "forward" | "go forward" | "okay next" | "ok next" -> next
- * 11. "back" | "go back" | "previous" | "previous step" | "last step" | "step back" -> previous
- * 12. A bare ingredient name: if `matchIngredient(transcript, ctx.ingredientNames)` finds one
- *                                                                              -> checkIngredient { query: transcript }
- * Otherwise null. Filler words around a command are tolerated: "okay next please",
- * "can you go back", "um next step" still match (rules 7-11 match the phrase anywhere
- * as whole words). Empty / whitespace-only input -> null.
+ *  1. Timers. For these phrases the determiners that/this/my/our are ALSO ignored.
+ *     - command-shaped pause|stop|hold timer                         -> pauseTimer
+ *     - command-shaped resume|continue timer                         -> resumeTimer
+ *     - command-shaped reset|restart timer; bare "reset" / "restart" -> resetTimer
+ *     - command-shaped cancel|remove|delete|clear|dismiss timer, "turn off timer", "turn timer off" -> cancelTimer
+ *     - command-shaped show|open timer(s); bare "timers"             -> showTab timers
+ *     - Durations: "<quantity> <unit>" pairs; quantity = digits, number words (one..nineteen, twenty..ninety,
+ *       "forty five"), or "<N> and a half"; unit = hour(s)/hr(s)/minute(s)/min(s)/second(s)/sec(s);
+ *       idioms "half an hour" = 30, "an hour and a half" / "one and a half hours" = 90. All pairs are summed,
+ *       seconds rounded UP to whole minutes; the total must be 1..180.
+ *       * WITH the word "timer" anywhere: "timer for 7 minutes", "set a timer for ten minutes",
+ *         "5 minute timer", "set timer 3" (a bare number counts as minutes only together with "timer"),
+ *         "set a timer for a minute" ("a/an <unit>" counts only with "timer")      -> startTimer { minutes }
+ *         Out of range ("timer for 4 hours", "timer for 0 minutes") -> null, never a default-length timer.
+ *       * WITHOUT "timer": only when core is NOTHING BUT the duration ("seven minutes", "5 minutes please",
+ *         "half an hour", "ninety seconds")                                           -> startTimer { minutes }
+ *         So "i'll be back in 5 minutes", "wait two seconds", "give me one second", "just a minute" are not timers.
+ *     - No duration: command-shaped "timer" | "set timer" | "start timer" | "new timer" | "step timer"
+ *       -> startTimer {}. Any other utterance mentioning "timer" ("is the timer going", "how long is left
+ *       on the timer") -> null.
+ *     - bare "pause" | "hold on"                                    -> pauseTimer
+ *     - bare "resume" | bare "start"                                -> resumeTimer
+ *  2. command-shaped "uncheck all" | "untick all" | "clear all" | "uncheck everything" -> checkAll false
+ *  3. command-shaped "check all" | "tick all" | "check everything" | "got everything"  -> checkAll true
+ *  4. Ingredient verbs (X = the rest of core; must be non-empty and not only a pronoun:
+ *     it, that, this, them, those, these):
+ *     - explicit: core starts with "uncheck X" | "untick X" -> checkIngredient { query: X, checked: false };
+ *       "check X" | "tick X" -> checkIngredient { query: X, checked: true }. Always returned, even when X is not
+ *       an ingredient, so the UI can say "couldn't find X".
+ *     - ambiguous: core starts with "remove X" (checked false) or "got X" | "i have X" | "ive got X" (checked true):
+ *       returned ONLY when matchIngredient(X, ctx.ingredientNames) finds one; otherwise fall through.
+ *  5. core is "step N" | "go to step N" | "jump to step N" | "show step N", optionally plus one more word
+ *     (N digits or number words, >= 1)                              -> goToStep { step: N }
+ *  6. Tabs (command-shaped):
+ *     "ingredients" | "show ingredients" | "show me ingredients" | "ingredient list" | "what do i need"
+ *                                                                    -> showTab ingredients
+ *     "steps" | "show steps" | "show me steps" | "instructions" | "method" | "back to steps" | "go back to steps"
+ *                                                                    -> showTab steps
+ *     ("next steps" / "previous steps" are speech-engine variants of "next step" -> not a tab.)
+ *  7. command-shaped "help" | "what can i say" | "commands" | "show help"          -> help
+ *  8. command-shaped "repeat" | "again" | "say again" | "say that again" | "read again" | "read it again" |
+ *     "what was that" | "pardon" | "come again"                     -> repeat
+ *  9. command-shaped "stop" | "quiet" | "be quiet" | "shush" | "stop talking" | "silence" | "enough" -> stopSpeaking
+ * 10. command-shaped "next" | "next step" | "next steps" | "continue" | "go on" | "forward" | "go forward" |
+ *     "move on" | "next one" | "go to next step"                   -> next
+ * 11. command-shaped "back" | "go back" | "previous" | "previous step" | "previous steps" | "last step" |
+ *     "step back" | "go back a step" | "go to previous step" | "one step back" -> previous
+ * 12. Bare ingredient name: matchIngredient(core, ctx.ingredientNames) finds one
+ *                                                                    -> checkIngredient { query: raw transcript, trimmed }
+ * Otherwise null. Empty / whitespace-only input -> null.
+ *
+ * Must be null: "put the lid back on", "i'll be right back", "bring it back to a boil", "is this the last step",
+ * "it's next to the stove", "add the next ingredient", "is that enough salt", "let me taste it again",
+ * "can you help me find the pan", "what do i need to do next", "is the timer going", "i'll be back in 5 minutes",
+ * "give me one second", "set a timer for 4 hours", "i have a question", "remove the pan from the heat".
+ * Must match: "next", "okay next please", "um next step", "can you go back", "go back please", "say that again",
+ * "what can i say", "go to step 3", "go to the next step", "can you pause", "stop the timer", "cancel that timer",
+ * "pause my timer", "seven minutes", "5 minutes please", "set a timer for two and a half minutes" (-> 3 minutes).
  */
 export function parseVoiceCommand(transcript: string, ctx: VoiceContext): Command | null {
   const tokens = tokenize(transcript)
   if (tokens.length === 0) return null
+  const core = toCore(tokens)
+  if (core.length === 0) return null
   const input: ParseInput = {
     raw: transcript.trim(),
     tokens,
-    bare: tokens.filter((t) => t !== 'the'),
-    core: stripFillers(tokens),
+    core,
+    timerCore: core.filter((t) => t !== 'that' && t !== 'this' && t !== 'my' && t !== 'our'),
     ctx,
   }
   for (const rule of RULES) {
@@ -345,7 +421,7 @@ export function parseVoiceCommand(transcript: string, ctx: VoiceContext): Comman
  * Valid range 1..180; anything outside -> null.
  */
 export function parseMinutes(text: string): number | null {
-  return parseDuration(durationTokens(text), true, true)
+  return scanDuration(durationTokens(text), true, true).minutes
 }
 
 /**

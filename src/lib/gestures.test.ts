@@ -230,6 +230,17 @@ describe('createGestureStabilizer', () => {
       }
     })
 
+    it('with holdMs 1000: held frames after the fire report progress exactly 1 and armed false', () => {
+      const r = run({ holdMs: 1000 }, [...span('Thumb_Up', 0, 1000, 100), { g: 'Thumb_Up', t: 1100 }, { g: 'Thumb_Up', t: 1300 }])
+      expect(firedAt(r)).toEqual([['Thumb_Up', 1000]])
+      for (const x of r.slice(-2)) {
+        expect(x.out.fired).toBeNull()
+        expect(x.out.progress).toBe(1)
+        expect(x.out.armed).toBe(false)
+        expect(x.out.candidate).toBe('Thumb_Up')
+      }
+    })
+
     it('never exceeds 1 and is armed before firing', () => {
       const r = run({}, span('Victory', 0, 449))
       for (const x of r) {

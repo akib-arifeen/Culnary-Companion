@@ -40,6 +40,22 @@ describe('TimerContext', () => {
     expect(listener).toHaveBeenCalledTimes(1)
   })
 
+  it('pausing an overdue timer settles it first: onDone once, timer done, not paused', () => {
+    const { result } = renderHook(() => useTimers(), { wrapper })
+    const listener = vi.fn()
+    act(() => void result.current.onDone(listener))
+    let id = ''
+    act(() => void (id = result.current.start({ label: 'A', minutes: 1 })))
+    vi.setSystemTime(Date.now() + 61_000) // clock passes the end WITHOUT any interval tick
+    expect(listener).not.toHaveBeenCalled()
+    act(() => result.current.pause(id))
+    expect(listener).toHaveBeenCalledTimes(1)
+    expect(listener.mock.calls[0][0]).toMatchObject({ id, done: true })
+    expect(result.current.timers[0].done).toBe(true)
+    advance(10_000)
+    expect(listener).toHaveBeenCalledTimes(1)
+  })
+
   it('pause holds the remaining time and resume continues it', () => {
     const { result } = renderHook(() => useTimers(), { wrapper })
     let id = ''

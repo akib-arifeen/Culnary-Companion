@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { FilesetResolver, GestureRecognizer } from '@mediapipe/tasks-vision'
+import type { GestureRecognizer } from '@mediapipe/tasks-vision'
 import { createGestureStabilizer, isGestureName, type GestureName } from '../lib/gestures'
 import { describeMediaError, type MediaStatus } from '../lib/mediaErrors'
 import type { GestureLive, GestureRecognizerApi, GestureRecognizerOptions } from './contracts'
@@ -21,22 +21,58 @@ function inIframe(): boolean {
   }
 }
 
+const GLOG_LINE = /^[IWEF]\d{4} \d\d:\d\d:\d\d\.\d+\s+\d+\s+[\w.]+\.(cc|h):\d+\]/
+const SILENCED_MARK = '__mediaPipeLogsSilenced'
+
+function isMediaPipeNativeLog(first: unknown): boolean {
+  return (
+    typeof first === 'string' &&
+    (GLOG_LINE.test(first) || first === 'Graph successfully started running.' || first.startsWith('INFO: Created TensorFlow Lite'))
+  )
+}
+
+/**
+ * MediaPipe's WASM runtime forwards its native glog/XNNPACK diagnostics to the console, one of them
+ * through the console error channel ("INFO: Created TensorFlow Lite XNNPACK delegate for CPU."). Those are
+ * third-party informational lines, not app errors. If this is removed, the zero-console-errors gate
+ * fails as soon as the model loads. Only messages whose FIRST argument matches MediaPipe's native
+ * formats are dropped; everything else reaches the original method with its `this` and arguments.
+ * Idempotent: safe to call any number of times.
+ */
+export function silenceMediaPipeLogs(): void {
+  for (const method of ['log', 'info', 'warn', 'error'] as const) {
+    const original = console[method] as ((...args: unknown[]) => void) & { [SILENCED_MARK]?: boolean }
+    if (original[SILENCED_MARK]) continue
+    const wrapped = function (this: unknown, ...args: unknown[]) {
+      if (isMediaPipeNativeLog(args[0])) return
+      return original.apply(this, args)
+    } as typeof original
+    wrapped[SILENCED_MARK] = true
+    console[method] = wrapped
+  }
+}
+
+type WasmFileset = Parameters<typeof GestureRecognizer.createFromOptions>[0]
+
 let modelPromise: Promise<GestureRecognizer> | null = null
 
 /** Loads the model once per page and reuses it across enable/disable. A failure resets the cache so a retry can work. */
 function loadModel(): Promise<GestureRecognizer> {
   if (!modelPromise) {
+    silenceMediaPipeLogs()
     const base = import.meta.env.BASE_URL
-    const create = (fileset: Awaited<ReturnType<typeof FilesetResolver.forVisionTasks>>, delegate: 'GPU' | 'CPU') =>
-      GestureRecognizer.createFromOptions(fileset, {
-        baseOptions: { modelAssetPath: `${base}models/gesture_recognizer.task`, delegate },
-        runningMode: 'VIDEO',
-        numHands: 1,
-        minHandDetectionConfidence: 0.5,
-        minHandPresenceConfidence: 0.5,
-        minTrackingConfidence: 0.5,
-      })
     modelPromise = (async () => {
+      // Loaded on demand so people who never turn gestures on don't download the library.
+      const { FilesetResolver, GestureRecognizer } = await import('@mediapipe/tasks-vision')
+      const create = (fileset: WasmFileset, delegate: 'GPU' | 'CPU') =>
+        GestureRecognizer.createFromOptions(fileset, {
+          baseOptions: { modelAssetPath: `${base}models/gesture_recognizer.task`, delegate },
+          runningMode: 'VIDEO',
+          numHands: 1,
+          minHandDetectionConfidence: 0.5,
+          minHandPresenceConfidence: 0.5,
+          minTrackingConfidence: 0.5,
+        })
       const fileset = await FilesetResolver.forVisionTasks(`${base}mediapipe/wasm`)
       try {
         return await create(fileset, 'GPU')
@@ -127,6 +163,8 @@ export function useGestureRecognizer({ enabled, onGesture }: GestureRecognizerOp
       let lastTenth = 0
 
       const tick = () => {
+        // A frame already dequeued when the run stopped must not touch the released stream.
+        if (stopped) return
         raf = requestAnimationFrame(tick)
         try {
           const preview = videoRef.current

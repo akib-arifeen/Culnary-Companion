@@ -87,6 +87,31 @@ describe('cookingReducer: previous', () => {
   })
 })
 
+describe('cookingReducer: previous from the completion dialog', () => {
+  it('only clears finished and stays on the last step', () => {
+    const fin = cookingReducer(init({ startStep: 4 }), { type: 'next' })
+    expect(fin.finished).toBe(true)
+    const p = cookingReducer(fin, { type: 'previous' })
+    expect(p.finished).toBe(false)
+    expect(p.stepIndex).toBe(4)
+    expect(p.tab).toBe('steps')
+  })
+
+  it('a second previous then moves back a step', () => {
+    const fin = cookingReducer(init({ startStep: 4 }), { type: 'next' })
+    const p2 = cookingReducer(cookingReducer(fin, { type: 'previous' }), { type: 'previous' })
+    expect(p2.stepIndex).toBe(3)
+  })
+
+  it('at step 0, steps tab, finished (single-step recipe) it is not a no-op', () => {
+    const fin = cookingReducer(init({ stepCount: 1 }), { type: 'next' })
+    expect(fin.finished).toBe(true)
+    const p = cookingReducer(fin, { type: 'previous' })
+    expect(p.finished).toBe(false)
+    expect(p.stepIndex).toBe(0)
+  })
+})
+
 describe('cookingReducer: goToStep', () => {
   it.each([0, 2, 4])('valid index %i', (index) => {
     const s = cookingReducer(init(), { type: 'goToStep', index })
@@ -162,6 +187,19 @@ describe('cookingReducer: ingredients', () => {
     expect([...all.checked].sort()).toEqual([0, 1, 2, 3])
     const none = cookingReducer(all, { type: 'checkAll', checked: false })
     expect(none.checked.size).toBe(0)
+  })
+
+  it('checkAll that changes nothing returns the same object', () => {
+    const none = init()
+    expect(cookingReducer(none, { type: 'checkAll', checked: false })).toBe(none)
+    const all = cookingReducer(none, { type: 'checkAll', checked: true })
+    expect(cookingReducer(all, { type: 'checkAll', checked: true })).toBe(all)
+  })
+
+  it('checkAll that changes something returns a new object', () => {
+    const one = cookingReducer(init(), { type: 'setIngredient', index: 0, checked: true })
+    expect(cookingReducer(one, { type: 'checkAll', checked: true })).not.toBe(one)
+    expect(cookingReducer(one, { type: 'checkAll', checked: false })).not.toBe(one)
   })
 
   it('never mutates the previous checked Set', () => {
