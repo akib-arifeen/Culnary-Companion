@@ -1,131 +1,130 @@
-import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { playChime } from '../lib/chime'
+import {
+  createTimer,
+  isRunning,
+  pauseTimer,
+  resetTimer,
+  resumeTimer,
+  settleTimer,
+  toggleTimer,
+  type KitchenTimer,
+} from '../lib/timers'
+import type { TimersApi } from './timerContract'
 
-export interface Timer {
-  id: string
-  label: string
-  totalSeconds: number
-  remainingSeconds: number
-  isRunning: boolean
-  createdAt: number
+const TimerContext = createContext<TimersApi | null>(null)
+
+function newId(): string {
+  return globalThis.crypto?.randomUUID?.() ?? `t-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
 }
 
-interface TimerContextType {
-  timers: Timer[]
-  addTimer: (label: string, minutes: number) => string
-  removeTimer: (id: string) => void
-  toggleTimer: (id: string) => void
-  resetTimer: (id: string) => void
-  updateTimer: (id: string, minutes: number) => void
-  getActiveTimers: () => Timer[]
-}
+export function TimerProvider({ children }: { children: ReactNode }) {
+  const [timers, setTimers] = useState<readonly KitchenTimer[]>([])
+  const [now, setNow] = useState(() => Date.now())
+  // Mirror of `timers` so operations and ticks read the latest list synchronously and
+  // completion side effects run exactly once (never inside a state updater).
+  const timersRef = useRef<readonly KitchenTimer[]>([])
+  const listenersRef = useRef(new Set<(timer: KitchenTimer) => void>())
 
-const TimerContext = createContext<TimerContextType | undefined>(undefined)
-
-export const TimerProvider = ({ children }: { children: ReactNode }) => {
-  const [timers, setTimers] = useState<Timer[]>([])
-
-  // Timer countdown logic
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setTimers((prevTimers) =>
-        prevTimers.map((timer) => {
-          if (timer.isRunning && timer.remainingSeconds > 0) {
-            const newRemaining = timer.remainingSeconds - 1
-            if (newRemaining === 0) {
-              // Timer completed - play sound or notification
-              if ('vibrate' in navigator) {
-                navigator.vibrate([200, 100, 200])
-              }
-            }
-            return { ...timer, remainingSeconds: newRemaining }
-          }
-          return timer
-        })
-      )
-    }, 1000)
-
-    return () => clearInterval(interval)
+  const commit = useCallback((next: readonly KitchenTimer[]) => {
+    timersRef.current = next
+    setTimers(next)
   }, [])
 
-  const addTimer = useCallback((label: string, minutes: number): string => {
-    const id = `timer-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-    const newTimer: Timer = {
-      id,
-      label,
-      totalSeconds: minutes * 60,
-      remainingSeconds: minutes * 60,
-      isRunning: false,
-      createdAt: Date.now(),
-    }
-    setTimers((prev) => [...prev, newTimer])
-    return id
-  }, [])
-
-  const removeTimer = useCallback((id: string) => {
-    setTimers((prev) => prev.filter((timer) => timer.id !== id))
-  }, [])
-
-  const toggleTimer = useCallback((id: string) => {
-    setTimers((prev) =>
-      prev.map((timer) =>
-        timer.id === id ? { ...timer, isRunning: !timer.isRunning } : timer
-      )
-    )
-  }, [])
-
-  const resetTimer = useCallback((id: string) => {
-    setTimers((prev) =>
-      prev.map((timer) =>
-        timer.id === id
-          ? { ...timer, remainingSeconds: timer.totalSeconds, isRunning: false }
-          : timer
-      )
-    )
-  }, [])
-
-  const updateTimer = useCallback((id: string, minutes: number) => {
-    setTimers((prev) =>
-      prev.map((timer) =>
-        timer.id === id
-          ? {
-              ...timer,
-              totalSeconds: minutes * 60,
-              remainingSeconds: minutes * 60,
-            }
-          : timer
-      )
-    )
-  }, [])
-
-  const getActiveTimers = useCallback(() => {
-    return timers.filter((timer) => timer.isRunning && timer.remainingSeconds > 0)
-  }, [timers])
-
-  return (
-    <TimerContext.Provider
-      value={{
-        timers,
-        addTimer,
-        removeTimer,
-        toggleTimer,
-        resetTimer,
-        updateTimer,
-        getActiveTimers,
-      }}
-    >
-      {children}
-    </TimerContext.Provider>
+  /** Settles every timer at time t; fires chime, vibration and listeners once per newly finished timer. */
+  const settleAll = useCallback(
+    (t: number) => {
+      const prev = timersRef.current
+      const next = prev.map((timer) => settleTimer(timer, t))
+      const finished = next.filter((timer, i) => timer !== prev[i])
+      if (finished.length === 0) return
+      commit(next)
+      playChime()
+      try {
+        navigator.vibrate?.([200, 100, 200])
+      } catch {
+        // vibration is optional
+      }
+      for (const timer of finished) listenersRef.current.forEach((listener) => listener(timer))
+    },
+    [commit],
   )
+
+  const tick = useCallback(() => {
+    const t = Date.now()
+    settleAll(t)
+    setNow(t)
+  }, [settleAll])
+
+  const anyRunning = timers.some(isRunning)
+  useEffect(() => {
+    if (!anyRunning) return
+    const interval = setInterval(tick, 250)
+    return () => clearInterval(interval)
+  }, [anyRunning, tick])
+
+  useEffect(() => {
+    document.addEventListener('visibilitychange', tick)
+    return () => document.removeEventListener('visibilitychange', tick)
+  }, [tick])
+
+  const start = useCallback<TimersApi['start']>(
+    ({ label, minutes, stepNumber }) => {
+      if (!Number.isFinite(minutes) || Math.abs(minutes - Math.round(minutes)) > 1e-9) return ''
+      const whole = Math.round(minutes)
+      if (whole < 1 || whole > 180) return ''
+      const t = Date.now()
+      settleAll(t)
+      const id = newId()
+      const timer = createTimer({ id, label, minutes: whole, now: t, stepNumber, autoStart: true })
+      const kept = stepNumber === undefined ? timersRef.current : timersRef.current.filter((x) => x.stepNumber !== stepNumber)
+      commit([...kept, timer])
+      setNow(t)
+      return id
+    },
+    [commit, settleAll],
+  )
+
+  const update = useCallback(
+    (id: string, fn: (timer: KitchenTimer, t: number) => KitchenTimer) => {
+      const t = Date.now()
+      settleAll(t)
+      const current = timersRef.current
+      if (!current.some((x) => x.id === id)) return
+      commit(current.map((x) => (x.id === id ? fn(x, t) : x)))
+      setNow(t)
+    },
+    [commit, settleAll],
+  )
+
+  const pause = useCallback((id: string) => update(id, pauseTimer), [update])
+  const resume = useCallback((id: string) => update(id, resumeTimer), [update])
+  const toggle = useCallback((id: string) => update(id, toggleTimer), [update])
+  const reset = useCallback((id: string) => update(id, (timer) => resetTimer(timer)), [update])
+  const remove = useCallback(
+    (id: string) => {
+      if (timersRef.current.some((x) => x.id === id)) commit(timersRef.current.filter((x) => x.id !== id))
+    },
+    [commit],
+  )
+
+  const onDone = useCallback<TimersApi['onDone']>((listener) => {
+    listenersRef.current.add(listener)
+    return () => {
+      listenersRef.current.delete(listener)
+    }
+  }, [])
+
+  const value = useMemo<TimersApi>(
+    () => ({ timers, now, start, pause, resume, toggle, reset, remove, onDone }),
+    [timers, now, start, pause, resume, toggle, reset, remove, onDone],
+  )
+
+  return <TimerContext.Provider value={value}>{children}</TimerContext.Provider>
 }
 
-export const useTimers = () => {
-  const context = useContext(TimerContext)
-  if (!context) {
-    throw new Error('useTimers must be used within TimerProvider')
-  }
-  return context
+export function useTimers(): TimersApi {
+  const ctx = useContext(TimerContext)
+  if (!ctx) throw new Error('useTimers must be used inside <TimerProvider>')
+  return ctx
 }
-
-
-
-
