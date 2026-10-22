@@ -1,67 +1,39 @@
-import { useNavigate } from 'react-router-dom'
+import { Link } from 'react-router'
 import { Clock } from 'lucide-react'
+import type { Recipe } from '../data/recipes'
 
 interface RecipeCardProps {
-  id: string
-  title: string
-  image: string
-  difficulty?: string
-  prepTime?: number
-  cookTime?: number
-  badge?: string
-  badgeColor?: string
+  recipe: Recipe
+  /** Optional line under the meta row, e.g. "Step 3 of 7". */
+  note?: string
 }
 
-const RecipeCard = ({
-  id,
-  title,
-  image,
-  difficulty,
-  prepTime,
-  cookTime,
-  badge,
-  badgeColor = 'bg-orange-primary',
-}: RecipeCardProps) => {
-  const navigate = useNavigate()
-
+export default function RecipeCard({ recipe, note }: RecipeCardProps) {
   return (
-    <div
-      onClick={() => navigate(`/recipe/${id}`)}
-      className="relative bg-white rounded-lg overflow-hidden shadow-sm border border-gray-100 cursor-pointer active:scale-98 transition-transform"
+    <Link
+      to={`/recipe/${recipe.id}`}
+      className="group flex h-full flex-col overflow-hidden rounded-xl border border-stone-200 bg-white shadow-xs transition-shadow hover:shadow-md"
     >
-      <div className="relative h-40 overflow-hidden">
+      <div className="aspect-4/3 overflow-hidden bg-stone-100">
         <img
-          src={image}
-          alt={title}
-          className="w-full h-full object-cover"
+          src={recipe.image}
+          alt=""
+          width={960}
+          height={720}
+          loading="lazy"
+          className="size-full object-cover transition-transform group-hover:scale-105"
         />
-        {badge && (
-          <div className={`absolute top-2 right-2 ${badgeColor} text-white text-xs font-semibold px-2 py-1 rounded`}>
-            {badge}
-          </div>
-        )}
-        {difficulty && !badge && (
-          <div className="absolute top-2 right-2 bg-white/90 text-gray-700 text-xs font-semibold px-2 py-1 rounded">
-            {difficulty}
-          </div>
-        )}
       </div>
-      <div className="p-3">
-        <h3 className="font-semibold text-gray-900 text-sm mb-1 line-clamp-2">{title}</h3>
-        {(prepTime || cookTime) && (
-          <div className="flex items-center gap-1 text-xs text-gray-500">
-            <Clock size={12} />
-            <span>
-              {prepTime && cookTime ? `${prepTime} min Prep / ${cookTime} min Cook` : 
-               prepTime ? `${prepTime} min` : 
-               cookTime ? `${cookTime} min` : ''}
-            </span>
-          </div>
-        )}
+      <div className="flex flex-1 flex-col gap-1 p-3">
+        <h3 className="line-clamp-2 text-sm font-semibold text-stone-900">{recipe.title}</h3>
+        <p className="flex items-center gap-1 text-xs text-stone-600">
+          <Clock size={12} aria-hidden="true" />
+          <span>
+            {recipe.prepTime + recipe.cookTime} min · {recipe.difficulty}
+          </span>
+        </p>
+        {note && <p className="text-xs font-medium text-brand-800">{note}</p>}
       </div>
-    </div>
+    </Link>
   )
 }
-
-export default RecipeCard
-

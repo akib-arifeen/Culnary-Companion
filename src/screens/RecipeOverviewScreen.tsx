@@ -1,134 +1,157 @@
-import { useParams, useNavigate } from 'react-router-dom'
-import MobileHeader from '../components/MobileHeader'
-import PersistentNavBar from '../components/PersistentNavBar'
-import { getRecipeById } from '../data/mockData'
+import { Link, useNavigate, useParams } from 'react-router'
+import { ChefHat, Clock, Flame, Globe, Heart, Timer, Users } from 'lucide-react'
+import Page from '../components/Page'
+import { getRecipeById } from '../data/recipes'
 import { useRecipeContext } from '../context/RecipeContext'
-import { Clock, Users, ChefHat, Globe, Heart } from 'lucide-react'
 
 const RecipeOverviewScreen = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const recipe = id ? getRecipeById(id) : null
-  const { isFavorite, toggleFavorite, setInProgress } = useRecipeContext()
+  const recipe = id ? getRecipeById(id) : undefined
+  const { isFavorite, toggleFavorite, getCurrentStep, setInProgress } = useRecipeContext()
 
   if (!recipe) {
     return (
-      <div className="min-h-screen bg-white pb-20">
-        <MobileHeader title="Recipe Not Found" showBack />
-        <div className="flex items-center justify-center h-64">
-          <p className="text-gray-500">Recipe not found</p>
+      <Page title="Recipe not found">
+        <div className="py-16 text-center">
+          <p className="mb-4 text-stone-700">We could not find that recipe.</p>
+          <Link
+            to="/"
+            className="inline-flex min-h-11 items-center rounded-lg bg-brand-700 px-5 py-2 text-sm font-semibold text-white hover:bg-brand-800"
+          >
+            Browse all recipes
+          </Link>
         </div>
-        <PersistentNavBar />
-      </div>
+      </Page>
     )
   }
 
+  const saved = isFavorite(recipe.id)
+  const progress = getCurrentStep(recipe.id)
+  const resumeStep = progress === undefined ? undefined : Math.min(progress, recipe.steps.length - 1)
+  const cookingPath = `/cooking/${recipe.id}`
+
+  const meta = [
+    { icon: Clock, label: 'Prep', value: `${recipe.prepTime} min` },
+    { icon: Flame, label: 'Cook', value: `${recipe.cookTime} min` },
+    { icon: Users, label: 'Servings', value: String(recipe.servings) },
+    { icon: ChefHat, label: 'Difficulty', value: recipe.difficulty },
+    { icon: Globe, label: 'Cuisine', value: recipe.cuisine },
+  ]
+
   return (
-    <div className="h-screen bg-white flex flex-col overflow-hidden">
-      <MobileHeader title={recipe.title} showBack />
-      
-      <main className="flex-1 overflow-y-auto px-4 py-3">
-        {/* Recipe Image - Smaller */}
-        <div className="relative h-48 rounded-lg overflow-hidden mb-3 shadow-md">
+    <Page title={recipe.title} withActionBar>
+      <div className="grid gap-6 md:grid-cols-2 md:items-start">
+        <div className="space-y-4">
           <img
             src={recipe.image}
-            alt={recipe.title}
-            className="w-full h-full object-cover"
+            alt=""
+            width={960}
+            height={720}
+            className="aspect-16/10 w-full rounded-2xl object-cover short:aspect-16/7"
           />
+          <dl className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+            {meta.map(({ icon: Icon, label, value }) => (
+              <div key={label} className="rounded-lg bg-white p-2 text-center ring-1 ring-stone-200">
+                <Icon size={16} className="mx-auto mb-0.5 text-brand-700" aria-hidden="true" />
+                <dt className="text-xs text-stone-600">{label}</dt>
+                <dd className="text-sm font-semibold text-stone-900">{value}</dd>
+              </div>
+            ))}
+          </dl>
         </div>
 
-        {/* Time Info - Compact */}
-        <div className="flex items-center gap-1 mb-3 text-xs text-gray-600">
-          <Clock size={14} />
-          <span>{recipe.prepTime} min Prep / {recipe.cookTime} min Cook</span>
-        </div>
-
-        {/* Overview Section */}
-        <section className="mb-3">
-          <div className="flex items-center justify-between mb-1">
-            <h2 className="text-base font-semibold text-gray-900">Overview</h2>
+        <div className="space-y-4">
+          <div className="flex items-start justify-between gap-3">
+            <h2 className="text-2xl font-bold text-stone-900">{recipe.title}</h2>
             <button
+              type="button"
               onClick={() => toggleFavorite(recipe.id)}
-              className={`p-2 rounded-lg transition-colors border-2 ${
-                isFavorite(recipe.id)
-                  ? 'bg-orange-50 border-orange-primary text-orange-primary'
-                  : 'bg-white border-gray-300 text-gray-700 hover:border-orange-primary hover:text-orange-primary'
+              aria-pressed={saved}
+              aria-label={saved ? 'Remove from saved' : 'Save recipe'}
+              className={`flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-full border ${
+                saved
+                  ? 'border-brand-700 bg-brand-50 text-brand-700'
+                  : 'border-stone-300 bg-white text-stone-700 hover:border-brand-700 hover:text-brand-700'
               }`}
             >
-              <Heart size={18} className={isFavorite(recipe.id) ? 'fill-current' : ''} />
+              <Heart size={20} className={saved ? 'fill-current' : ''} aria-hidden="true" />
             </button>
           </div>
-          <p className="text-sm text-gray-700 leading-relaxed">{recipe.description}</p>
+          <p className="text-stone-700">{recipe.description}</p>
+
+          <div className="fixed inset-x-0 bottom-16 z-30 flex gap-2 border-t border-stone-200 bg-white p-3 short:bottom-11 md:static md:z-auto md:border-0 md:bg-transparent md:p-0">
+            <Link
+              to={cookingPath}
+              onClick={() => {
+                if (resumeStep === undefined) setInProgress(recipe.id, 0)
+              }}
+              className="inline-flex min-h-12 grow items-center justify-center rounded-lg bg-brand-700 px-5 py-2 font-semibold text-white hover:bg-brand-800 md:grow-0"
+            >
+              {resumeStep === undefined ? 'Start cooking' : `Resume at step ${resumeStep + 1}`}
+            </Link>
+            {resumeStep !== undefined && (
+              <button
+                type="button"
+                onClick={() => {
+                  setInProgress(recipe.id, 0)
+                  navigate(cookingPath)
+                }}
+                className="inline-flex min-h-12 cursor-pointer items-center justify-center rounded-lg border border-stone-300 bg-white px-5 py-2 font-semibold text-stone-800 hover:bg-stone-50"
+              >
+                Start over
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-8 grid gap-8 md:grid-cols-[2fr_3fr]">
+        <section aria-labelledby="ingredients-title">
+          <h2 id="ingredients-title" className="mb-3 text-lg font-semibold text-stone-900">
+            Ingredients
+          </h2>
+          <ul className="divide-y divide-stone-200 rounded-xl bg-white ring-1 ring-stone-200">
+            {recipe.ingredients.map((ingredient) => (
+              <li key={ingredient.name} className="flex justify-between gap-3 px-3 py-2 text-sm">
+                <span className="font-medium text-stone-900">{ingredient.name}</span>
+                <span className="text-stone-600">
+                  {ingredient.amount} {ingredient.unit ?? ''}
+                </span>
+              </li>
+            ))}
+          </ul>
         </section>
 
-        {/* Start Cooking Button */}
-        <button
-          onClick={() => {
-            setInProgress(recipe.id, 0)
-            navigate(`/cooking/${recipe.id}`)
-          }}
-          className="w-full bg-orange-primary text-white font-semibold py-2.5 rounded-lg hover:bg-orange-dark transition-colors shadow-md text-sm mb-3"
-        >
-          Start Cooking
-        </button>
-
-        {/* Key Details - Compact */}
-        <div className="grid grid-cols-3 gap-2 mb-3">
-          <div className="bg-gray-50 rounded-lg p-2 text-center">
-            <Users className="mx-auto mb-0.5 text-orange-primary" size={16} />
-            <p className="text-xs text-gray-600">Servings</p>
-            <p className="text-xs font-semibold text-gray-900">{recipe.servings}</p>
-          </div>
-          <div className="bg-gray-50 rounded-lg p-2 text-center">
-            <ChefHat className="mx-auto mb-0.5 text-orange-primary" size={16} />
-            <p className="text-xs text-gray-600">Difficulty</p>
-            <p className="text-xs font-semibold text-gray-900">{recipe.difficulty}</p>
-          </div>
-          <div className="bg-gray-50 rounded-lg p-2 text-center">
-            <Globe className="mx-auto mb-0.5 text-orange-primary" size={16} />
-            <p className="text-xs text-gray-600">Cuisine</p>
-            <p className="text-xs font-semibold text-gray-900">{recipe.cuisine}</p>
-          </div>
-        </div>
-
-        {/* Ingredients and Steps - Two Column Layout */}
-        <div className="grid grid-cols-2 gap-4">
-          {/* Ingredients - Left Column */}
-          <section className="pr-4 border-r border-gray-200">
-            <h2 className="text-base font-semibold text-gray-900 mb-2">Ingredients</h2>
-            <div className="space-y-1.5">
-              {recipe.ingredients.map((ingredient, index) => (
-                <div key={index} className="flex items-center gap-2 text-sm text-gray-700">
-                  <span className="w-1.5 h-1.5 bg-orange-primary rounded-full flex-shrink-0"></span>
-                  <span>
-                    {ingredient.amount} {ingredient.unit || ''} {ingredient.name}
-                  </span>
+        <section aria-labelledby="steps-title">
+          <h2 id="steps-title" className="mb-3 text-lg font-semibold text-stone-900">
+            Steps
+          </h2>
+          <ol className="space-y-3">
+            {recipe.steps.map((step) => (
+              <li key={step.stepNumber} className="flex gap-3">
+                <span
+                  aria-hidden="true"
+                  className="flex size-7 shrink-0 items-center justify-center rounded-full bg-brand-700 text-sm font-bold text-white"
+                >
+                  {step.stepNumber}
+                </span>
+                <div className="min-w-0">
+                  <p className="text-stone-800">{step.instruction}</p>
+                  {step.duration !== undefined && (
+                    <p className="mt-1 inline-flex items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-800">
+                      <Timer size={12} aria-hidden="true" />
+                      {step.duration} min
+                    </p>
+                  )}
                 </div>
-              ))}
-            </div>
-          </section>
-
-          {/* Steps - Right Column */}
-          <section className="pl-4">
-            <h2 className="text-base font-semibold text-gray-900 mb-2">Steps</h2>
-            <p className="text-sm text-gray-600 mb-2">
-              {recipe.steps.length} steps • Total time: {recipe.prepTime + recipe.cookTime} minutes
-            </p>
-            <div className="space-y-1.5">
-              {recipe.steps.map((step, index) => (
-                <div key={index} className="text-xs text-gray-600">
-                  <span className="font-semibold text-gray-900">Step {step.stepNumber}:</span> {step.instruction.substring(0, 40)}...
-                </div>
-              ))}
-            </div>
-          </section>
-        </div>
-      </main>
-
-      <PersistentNavBar />
-    </div>
+              </li>
+            ))}
+          </ol>
+        </section>
+      </div>
+    </Page>
   )
 }
 
 export default RecipeOverviewScreen
-

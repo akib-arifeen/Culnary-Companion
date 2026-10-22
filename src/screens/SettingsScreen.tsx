@@ -1,154 +1,177 @@
-import { useState, useEffect } from 'react'
-import MobileHeader from '../components/MobileHeader'
-import PersistentNavBar from '../components/PersistentNavBar'
-import { Volume2, Hand, Bell, Smartphone, Bug } from 'lucide-react'
+import { useId, useState } from 'react'
+import { ExternalLink } from 'lucide-react'
+import Page from '../components/Page'
+import { PREF_DEFAULTS, PREF_KEYS, usePref, writeJSON } from '../lib/storage'
 
-const SettingsScreen = () => {
-  const [voiceCommands, setVoiceCommands] = useState(() => {
-    return localStorage.getItem('voice-commands-enabled') !== 'false'
-  })
-  const [gestureControls, setGestureControls] = useState(() => {
-    return localStorage.getItem('gesture-controls-enabled') !== 'false'
-  })
-  const [recipeReminders, setRecipeReminders] = useState(false)
-  const [appUpdates, setAppUpdates] = useState(true)
-  const [debugButton, setDebugButton] = useState(() => {
-    return localStorage.getItem('debug-button-enabled') === 'true'
-  })
+const REPO_URL = 'https://github.com/akib-arifeen/Culnary-Companion'
 
-  useEffect(() => {
-    localStorage.setItem('voice-commands-enabled', voiceCommands.toString())
-  }, [voiceCommands])
+interface SwitchRowProps {
+  label: string
+  description: string
+  checked: boolean
+  onChange: (next: boolean) => void
+}
 
-  useEffect(() => {
-    localStorage.setItem('gesture-controls-enabled', gestureControls.toString())
-  }, [gestureControls])
-
-  useEffect(() => {
-    localStorage.setItem('debug-button-enabled', debugButton.toString())
-  }, [debugButton])
-
-  const ToggleSwitch = ({
-    enabled,
-    onToggle,
-  }: {
-    enabled: boolean
-    onToggle: (enabled: boolean) => void
-  }) => {
-    return (
+function SwitchRow({ label, description, checked, onChange }: SwitchRowProps) {
+  const id = useId()
+  return (
+    <li className="flex items-center justify-between gap-4 px-4 py-3">
+      <div className="min-w-0">
+        <p id={`${id}-label`} className="font-semibold text-stone-900">
+          {label}
+        </p>
+        <p id={`${id}-desc`} className="text-sm text-stone-600">
+          {description}
+        </p>
+      </div>
       <button
-        onClick={() => onToggle(!enabled)}
-        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-          enabled ? 'bg-orange-primary' : 'bg-gray-300'
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-labelledby={`${id}-label`}
+        aria-describedby={`${id}-desc`}
+        onClick={() => onChange(!checked)}
+        className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
+          checked ? 'bg-brand-700' : 'bg-stone-400'
         }`}
       >
         <span
-          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-            enabled ? 'translate-x-6' : 'translate-x-1'
+          aria-hidden="true"
+          className={`inline-block size-5 rounded-full bg-white transition-transform ${
+            checked ? 'translate-x-6' : 'translate-x-1'
           }`}
         />
       </button>
-    )
-  }
+    </li>
+  )
+}
 
-  const SettingItem = ({
-    icon: Icon,
-    title,
-    description,
-    enabled,
-    onToggle,
-  }: {
-    icon: any
-    title: string
-    description: string
-    enabled: boolean
-    onToggle: (enabled: boolean) => void
-  }) => {
-    return (
-      <div className="flex items-start justify-between py-4 border-b border-gray-100">
-        <div className="flex items-start gap-3 flex-1">
-          <div className="mt-1">
-            <Icon size={20} className="text-orange-primary" />
-          </div>
-          <div className="flex-1">
-            <h3 className="font-semibold text-gray-900 mb-1">{title}</h3>
-            <p className="text-sm text-gray-600 leading-relaxed">{description}</p>
-          </div>
-        </div>
-        <div className="ml-4">
-          <ToggleSwitch enabled={enabled} onToggle={onToggle} />
-        </div>
-      </div>
-    )
-  }
+const outlineButton =
+  'min-h-11 cursor-pointer rounded-lg border border-stone-300 bg-white px-4 text-sm font-semibold text-stone-800 hover:bg-stone-50'
+
+const SettingsScreen = () => {
+  const [voice, setVoice] = usePref<boolean>(PREF_KEYS.voice, PREF_DEFAULTS[PREF_KEYS.voice])
+  const [gestures, setGestures] = usePref<boolean>(PREF_KEYS.gestures, PREF_DEFAULTS[PREF_KEYS.gestures])
+  const [speakSteps, setSpeakSteps] = usePref<boolean>(PREF_KEYS.speakSteps, PREF_DEFAULTS[PREF_KEYS.speakSteps])
+  const [cameraPreview, setCameraPreview] = usePref<boolean>(PREF_KEYS.cameraPreview, PREF_DEFAULTS[PREF_KEYS.cameraPreview])
+  const [, setOnboarded] = usePref<boolean>(PREF_KEYS.onboarded, PREF_DEFAULTS[PREF_KEYS.onboarded])
+  const [confirmingClear, setConfirmingClear] = useState(false)
+  const [status, setStatus] = useState('')
 
   return (
-    <div className="min-h-screen bg-white pb-20">
-      <MobileHeader title="Settings" showBack />
-      
-      <main className="px-4 py-4">
-        {/* Assistance Features Section */}
-        <section className="mb-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Assistance Features</h2>
-          <div className="bg-white rounded-lg border border-gray-200">
-            <SettingItem
-              icon={Volume2}
-              title="Voice Commands"
-              description="Enable hands-free interaction with recipes."
-              enabled={voiceCommands}
-              onToggle={setVoiceCommands}
+    <Page title="Settings">
+      <div className="mx-auto max-w-2xl space-y-6">
+        <section aria-labelledby="handsfree-settings">
+          <h2 id="handsfree-settings" className="mb-2 text-lg font-semibold text-stone-900">
+            Hands-free
+          </h2>
+          <ul className="divide-y divide-stone-200 rounded-xl bg-white ring-1 ring-stone-200">
+            <SwitchRow
+              label="Voice commands"
+              description="Say next, back, repeat or set a timer. Asks for microphone access when you turn it on."
+              checked={voice}
+              onChange={setVoice}
             />
-            <SettingItem
-              icon={Hand}
-              title="Gesture Controls"
-              description="Use specific hand gestures for navigation and actions."
-              enabled={gestureControls}
-              onToggle={setGestureControls}
+            <SwitchRow
+              label="Hand gestures"
+              description="Control steps and timers with your hand. The camera only turns on in cooking mode."
+              checked={gestures}
+              onChange={setGestures}
             />
-            <SettingItem
-              icon={Bug}
-              title="Show Debug Button"
-              description="Show the gesture debug overlay button on cooking page."
-              enabled={debugButton}
-              onToggle={setDebugButton}
+            <SwitchRow
+              label="Read steps aloud"
+              description="Speak each step as you reach it."
+              checked={speakSteps}
+              onChange={setSpeakSteps}
             />
+            <SwitchRow
+              label="Show camera preview"
+              description="Show a small mirrored view of your camera while gestures are on."
+              checked={cameraPreview}
+              onChange={setCameraPreview}
+            />
+          </ul>
+          <div className="mt-3">
+            <button
+              type="button"
+              onClick={() => {
+                setOnboarded(false)
+                setStatus('The hands-free tutorial will play the next time you start cooking.')
+              }}
+              className={outlineButton}
+            >
+              Replay hands-free tutorial
+            </button>
           </div>
         </section>
 
-        {/* Notifications Section */}
-        <section className="mb-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Notifications</h2>
-          <div className="bg-white rounded-lg border border-gray-200">
-            <SettingItem
-              icon={Bell}
-              title="Recipe Reminders"
-              description="Get alerts for meal prep and cooking schedules."
-              enabled={recipeReminders}
-              onToggle={setRecipeReminders}
-            />
-            <SettingItem
-              icon={Smartphone}
-              title="App Updates"
-              description="Receive notifications about new features and versions."
-              enabled={appUpdates}
-              onToggle={setAppUpdates}
-            />
+        <section aria-labelledby="data-settings">
+          <h2 id="data-settings" className="mb-2 text-lg font-semibold text-stone-900">
+            Your data
+          </h2>
+          <div className="rounded-xl bg-white p-4 ring-1 ring-stone-200">
+            <p className="mb-3 text-sm text-stone-600">
+              Saved recipes and cooking progress are stored only in this browser.
+            </p>
+            {confirmingClear ? (
+              <div role="group" aria-label="Confirm clearing data" className="space-y-3">
+                <p className="text-sm font-semibold text-stone-900">
+                  Remove all saved recipes and in-progress steps? This cannot be undone.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      writeJSON(PREF_KEYS.favorites, [])
+                      writeJSON(PREF_KEYS.progress, {})
+                      setConfirmingClear(false)
+                      setStatus('Saved recipes and progress cleared.')
+                    }}
+                    className="min-h-11 cursor-pointer rounded-lg bg-red-700 px-4 text-sm font-semibold text-white hover:bg-red-800"
+                  >
+                    Yes, clear everything
+                  </button>
+                  <button type="button" onClick={() => setConfirmingClear(false)} className={outlineButton}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button type="button" onClick={() => setConfirmingClear(true)} className={outlineButton}>
+                Clear saved recipes and progress
+              </button>
+            )}
           </div>
         </section>
 
-        {/* Appearance Section */}
-        <section>
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Appearance</h2>
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
-            <p className="text-sm text-gray-600">Appearance settings coming soon...</p>
+        <p role="status" className="min-h-5 text-sm font-medium text-stone-800">
+          {status}
+        </p>
+
+        <section aria-labelledby="about-settings">
+          <h2 id="about-settings" className="mb-2 text-lg font-semibold text-stone-900">
+            About and privacy
+          </h2>
+          <div className="space-y-3 rounded-xl bg-white p-4 text-sm text-stone-700 ring-1 ring-stone-200">
+            <p>
+              Gesture recognition runs in your browser and camera video never leaves your device. Voice commands use
+              your browser's speech service; in Chrome this sends your audio to Google.
+            </p>
+            <a
+              href={REPO_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded font-semibold text-brand-800 underline"
+            >
+              View the source on GitHub
+              <ExternalLink size={14} aria-hidden="true" />
+              <span className="sr-only">(opens in a new tab)</span>
+            </a>
           </div>
         </section>
-      </main>
-
-      <PersistentNavBar />
-    </div>
+      </div>
+    </Page>
   )
 }
 
 export default SettingsScreen
-

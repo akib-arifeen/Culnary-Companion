@@ -1,228 +1,168 @@
 # Culinary Companion
 
-A mobile-first recipe application designed for hands-free cooking with voice and gesture controls.
+A hands-free recipe app: step through a recipe with hand gestures or your voice while your hands are covered in flour, and have each step read aloud.
 
-## Features
+**Live demo:** https://culnary-companion-bhy9.vercel.app
 
-- **Home Hub Screen**: Browse editor's picks, recent recipes, and continue cooking
-- **Recipe Overview**: View recipe details, ingredients, and cooking steps
-- **Active Cooking Mode**: Step-by-step cooking instructions with tabbed interface
-- **Settings**: Configure voice commands, gesture controls, and notifications
-- **Persistent Navigation**: Easy access to all main features from any screen
+## Screenshots
 
-## Tech Stack
+<!-- Screenshots go here. -->
 
-- React 18 with TypeScript
-- Vite for build tooling
-- Tailwind CSS for styling
-- React Router for navigation
-- Lucide React for icons
-- **ml5.js HandPose** for gesture recognition
-- **Web Speech API** for voice commands
-- **Web Speech Synthesis API** for text-to-speech
+## What it does
 
-## Getting Started
+- Eight cookable recipes with photos, ingredient lists and timed steps.
+- A cooking mode that shows one step at a time, large and readable from across the kitchen.
+- Control it by tapping, with the keyboard, by voice, or with hand gestures. Every method triggers the same commands.
+- Kitchen timers that keep running when you leave the cooking screen and chime and announce when they finish.
+- Saved recipes and per-recipe progress, kept in your browser.
+- A short hands-free tutorial with live gesture practice, and a help sheet you can open at any time.
 
-### Prerequisites
+## Hands-free controls
 
-- Node.js 18+ and npm
-- **Google Chrome** (required for voice and gesture controls)
+### Hand gestures
 
-### Installing Node.js and npm
+Hold the gesture for about half a second. The app fires once, then waits until your hand changes or leaves the frame.
 
-npm comes bundled with Node.js, so installing Node.js will also install npm. Here are installation options:
+| Gesture | Action |
+| --- | --- |
+| Thumb up | Next step |
+| Thumb down | Previous step |
+| Open palm | Read the step again |
+| Victory (V sign) | Show or hide ingredients |
+| Point up | Start the step timer |
+| Fist | Pause or resume the timer |
 
-**Option 1: Official Installer (Recommended)**
-1. Visit [nodejs.org](https://nodejs.org/)
-2. Download the LTS (Long Term Support) version for your operating system
-3. Run the installer and follow the setup wizard
-4. Verify installation by opening a terminal and running:
-   ```bash
-   node --version
-   npm --version
-   ```
+### Voice commands
 
-**Option 2: Using a Package Manager**
+Say the phrase on its own, or with filler such as "okay" or "please".
 
-- **macOS (using Homebrew)**:
-  ```bash
-  brew install node
-  ```
+| Say | Action |
+| --- | --- |
+| "next", "next step", "continue", "go on" | Next step |
+| "back", "previous", "go back" | Previous step |
+| "repeat", "again", "say that again" | Read the step again |
+| "step 3", "go to step 3" | Jump to a step |
+| "ingredients", "what do I need" | Show ingredients |
+| "steps", "instructions", "method" | Show steps |
+| "timer for 7 minutes", "set a timer", "half an hour" | Start a timer |
+| "pause timer", "resume timer", "reset timer" | Control the timer |
+| "cancel timer", "dismiss timer" | Remove a timer |
+| "check garlic", "got the onions", "check all" | Tick ingredients off |
+| "uncheck garlic", "uncheck all" | Untick ingredients |
+| "stop", "quiet" | Stop talking |
+| "help", "what can I say" | Open help |
 
-- **Linux (Ubuntu/Debian)**:
-  ```bash
-  sudo apt update
-  sudo apt install nodejs npm
-  ```
+Matching is by whole words, so "background" never triggers "back".
 
-- **Windows (using Chocolatey)**:
-  ```bash
-  choco install nodejs
-  ```
+The grammar only accepts command-shaped phrases, so everyday kitchen talk such as "put the lid back on" is ignored.
 
-After installation, verify that both Node.js and npm are installed correctly:
-```bash
-node --version  # Should show v18.x.x or higher
-npm --version   # Should show 9.x.x or higher
+The microphone pauses while the app is speaking, so it never hears itself. Speak after the read-out finishes, or tap Stop reading.
+
+### Keyboard
+
+| Key | Action |
+| --- | --- |
+| Right arrow, N | Next step |
+| Left arrow, P | Previous step |
+| R | Read step again |
+| I | Show or hide ingredients |
+| T | Start step timer |
+| F | Pause or resume timer |
+| Esc | Stop talking |
+| ? | Help |
+
+## Works without a camera or mic
+
+Nothing asks for the camera or microphone until you turn gestures or voice on. If you decline, or the browser or device does not support them, the app shows a short note and stays fully usable with taps and the keyboard.
+
+## Privacy
+
+Gesture recognition runs in your browser and camera video never leaves your device. Voice commands use the browser's speech service; in Chrome this sends your audio to Google. Saved recipes, progress and settings are stored in your browser's local storage only. There is no account and no backend.
+
+## Browser support
+
+| Feature | Browsers |
+| --- | --- |
+| Hand gestures | Modern Chrome, Edge, Firefox and Safari with WebAssembly and a camera |
+| Voice commands | Chrome, Edge and Safari (not Firefox) |
+| Read aloud | All major browsers |
+
+## Embedding
+
+The app works inside an iframe. Allow the camera and microphone so gestures and voice can work:
+
+```html
+<iframe
+  src="https://culnary-companion-bhy9.vercel.app"
+  width="800"
+  height="520"
+  allow="camera; microphone; autoplay"
+  title="Culinary Companion"
+></iframe>
 ```
 
-### Installation
+Without the `allow` attribute the browser blocks the camera and microphone, and the app falls back to taps and keys.
 
-1. Install dependencies:
+## How it works
 
-```bash
-npm install --legacy-peer-deps
 ```
-or
-
-```bash
-npm install
-```
-
-2. Start the development server:
-```bash
-npm run dev
-```
-
-3. **Important**: Open **Google Chrome** and navigate to `http://localhost:5173`
-
-4. **Enable Mobile View** (Required for optimal experience):
-   - Press `F12` or right-click and select "Inspect" to open Developer Tools
-   - Click the device toolbar icon (or press `Ctrl+Shift+M` / `Cmd+Shift+M`)
-   - Select **iPhone 14 Pro** from the device dropdown (or any mobile device)
-   - This ensures the mobile-first UI displays correctly and camera access works properly for gesture controls
-
-5. **Allow Camera and Microphone Access** (Required for voice and gesture controls):
-   - When prompted by Chrome, click **"Allow"** for camera access (needed for gesture detection)
-   - Click **"Allow"** for microphone access (needed for voice commands)
-   - If you previously denied access, click the camera/microphone icon in Chrome's address bar and select "Always allow" for localhost
-   - You can also manage permissions in Chrome Settings → Privacy and security → Site settings → Camera/Microphone
-
-### Why Chrome?
-
-- Voice commands require Chrome's Web Speech API
-- Gesture controls use ml5.js HandPose which works best in Chrome
-- Camera access for gesture detection is most reliable in Chrome
-- Microphone access for voice commands works seamlessly in Chrome
-
-### Building for Production
-
-```bash
-npm run build
+  tap      keys      voice      gestures
+   |         |          |           |
+   |         |     speech parser    |
+   |         |          |      stabilizer (hold to confirm)
+   +---------+----------+-----------+
+                        |
+                     Command
+                        |
+              one dispatcher (cooking screen)
+                        |
+          +-------------+--------------+
+          |             |              |
+   step reducer      timers        speech out
 ```
 
-The built files will be in the `dist` directory.
+Every input becomes a `Command`, and the cooking screen handles commands in exactly one place, so a new input method only needs a translator. A gesture must be held steadily before it fires (the stabilizer), which stops accidental triggers from a hand passing through the frame. The MediaPipe gesture model and its WebAssembly runtime are self-hosted and lazy-loaded, so nothing is downloaded until you turn gestures on.
 
-## Project Structure
+### Testing
+
+There are 820 automated tests (`npm test`). The logic tests were written from the interface by a separate author, and the suite was hardened with mutation testing (a test was added for each mutant that survived). On top of that, browser probes ran in Chromium with fake camera and microphone devices. They covered real MediaPipe recognition of all six gestures from photos, voice through a stand-in for the browser speech service, the permission-denied UI, and a cross-origin iframe with and without camera and microphone permission.
+
+## Tech stack
+
+React 18, TypeScript, Vite, Tailwind CSS 4, React Router 7, lucide-react, MediaPipe Tasks Vision (Gesture Recognizer), Web Speech API, Web Audio, Vitest and Testing Library.
+
+## Getting started
+
+Requires Node 20 or newer.
+
+```bash
+npm ci
+npm run dev      # start the dev server
+npm test         # run the unit and component tests
+npm run build    # typecheck and build for production
+```
+
+## Project structure
 
 ```
 src/
-├── components/          # Reusable UI components
-│   ├── MobileHeader.tsx
-│   ├── PersistentNavBar.tsx
-│   └── RecipeCard.tsx
-├── screens/            # Main application screens
-│   ├── HomeScreen.tsx
-│   ├── RecipeOverviewScreen.tsx
-│   ├── ActiveCookingScreen.tsx
-│   ├── SettingsScreen.tsx
-│   ├── FavoritesScreen.tsx
-│   ├── SearchScreen.tsx
-│   └── ContinueCookingScreen.tsx
-├── data/              # Mock data
-│   └── mockData.ts
-├── App.tsx            # Main app component with routing
-├── main.tsx          # Entry point
-└── index.css         # Global styles
+  lib/          pure logic: commands, voice parser, gestures, keyboard, timers, storage
+  hooks/        gesture recognition, speech recognition and speech synthesis hooks
+  context/      recipes (saved, progress) and kitchen timers
+  screens/      home, recipe, cooking, search, saved, in progress, settings
+  components/   shared UI: header, bottom nav, recipe card, timer banner
+  data/         recipe content
+public/
+  recipes/      recipe photos and CREDITS.md
+  models/       MediaPipe gesture recognizer model
+  mediapipe/    self-hosted WebAssembly runtime (copied from node_modules at build)
 ```
 
-## Voice and Gesture Controls
+## Credits
 
-### 🎤 Voice Commands
+- Hand gesture model: Google MediaPipe Gesture Recognizer, Apache-2.0.
+- Food photos: Unsplash, used under the [Unsplash License](https://unsplash.com/license). Sources are listed in `public/recipes/CREDITS.md`.
 
-#### Navigation Commands (Available on Cooking/Steps Page)
-- **"Next"** / **"Next step"** → Go to next step
-- **"Back"** / **"Go back"** / **"Previous"** / **"Previous step"** → Go to previous step
-- **"Show ingredients"** / **"Ingredients"** / **"Ingredient list"** → Switch to ingredients tab
-- **"Show steps"** / **"Steps"** / **"Cooking"** → Switch to steps/cooking tab
+## Course context
 
-#### Timer Commands (Available on Timer Page)
-- **"Timer"** / **"Set timer"** → Go to timer page (creates 5 min timer if none exists)
-- **"Timer [number]"** (e.g., "Timer 10") → Create and start timer for specified minutes (1-120)
-- **"[Number] minutes"** / **"[Number] min"** / **"[Number]"** (e.g., "5 minutes", "10 min", "7") → Create and start timer for that duration
-- **"Start"** → Start the current timer (or create 5 min timer if none exists)
-- **"Pause"** → Pause the current timer
-- **"Restart"** → Reset and restart the current timer
-
-#### Ingredient Commands (Available on Ingredients Page)
-- **"[Ingredient name]"** (e.g., "Chicken", "Onion") → Toggle ingredient checkbox
-- **"Check all"** → Check all ingredients
-- **"Uncheck all"** → Uncheck all ingredients
-
-### 👋 Gesture Controls
-
-#### On Cooking/Steps Page
-
-**Navigation Gestures:**
-- **Thumbs Up** → Next step
-- **Thumbs Down** → Previous step
-- **Open Palm** (all 5 fingers extended) → Go to steps/cooking page
-- **Pointing Up** (index finger pointing upward) → Go to timer page
-- **Rock Sign** (index + pinky extended) → Go to ingredients page
-- **OK Sign** (thumb and index forming circle) → Go to cooking/steps page
-
-#### On Timer Page
-
-**Timer Duration Gestures:**
-- **1 Finger** → Create and start 5 minute timer
-- **2 Fingers** → Create and start 10 minute timer
-- **3 Fingers** → Create and start 15 minute timer
-- **4 Fingers** → Create and start 30 minute timer
-
-**Timer Control Gestures:**
-- **Fist** (all fingers closed) → Toggle timer (pause if running, start if paused)
-- **Thumbs Down** → Pause timer
-
-### 📝 Notes
-
-- All gestures require **1 frame** of consistent detection before activation
-- Voice commands work independently of gesture controls
-- TTS (Text-to-Speech) reads steps aloud automatically when enabled (on by default)
-- Gestures are context-aware (different actions on different pages)
-- All commands provide visual and audio feedback when TTS is enabled
-- Enable voice/gesture controls from the settings or using the toggle buttons on the cooking screen
-- Debug overlay available for gesture detection (enable in settings)
-
-## Design Principles
-
-This application follows the requirements document's design principles:
-
-- **Hub-Centered Architecture**: Non-linear navigation between recipe steps, ingredients, and timers
-- **Tabbed Document Interface (TDI)**: Used in Active Cooking Screen for switching between steps and ingredients
-- **Multimodal Interaction**: Fully implemented voice and gesture commands for hands-free cooking
-- **Mobile-First Design**: Optimized for touch interactions with large, accessible targets
-- **Minimalist Active Cooking Screen**: Large, readable text for distance viewing
-
-## Mock Data
-
-The application uses mock recipe data defined in `src/data/mockData.ts`. You can modify this file to add or change recipes for testing.
-
-## Features
-
-- ✅ Voice command recognition
-- ✅ Gesture control implementation (ml5.js HandPose)
-- ✅ Timer functionality with multiple timers
-- ✅ Text-to-speech (TTS) for step reading
-- ✅ Recipe favorites
-- ✅ Recipe search and filtering
-- ✅ Settings page for configuring controls
-
-## Future Enhancements
-
-- Recipe favorites persistence (localStorage)
-- User authentication
-- Recipe sharing
-- Custom recipe creation
-- Nutritional information
-- Cooking history and analytics
-
+Originally built for CS3483 Multimodal Interface Design.

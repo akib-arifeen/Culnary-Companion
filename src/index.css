@@ -1,41 +1,48 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+/* Brand orange. Text and white-on-orange buttons use 700+ (AA contrast);
+   400-500 are for fills, rings and icons only. cream = warm neutral page background.
+   ds-allow-hardcode: this block IS the token source; raw values are only allowed here. */
+@theme {
+  --color-brand-50: #FFF7ED;
+  --color-brand-100: #FFEDD5;
+  --color-brand-200: #FED7AA;
+  --color-brand-400: #FB923C;
+  --color-brand-500: #F97316;
+  --color-brand-600: #EA580C;
+  --color-brand-700: #C2410C;
+  --color-brand-800: #9A3412;
+  --color-brand-900: #7C2D12;
+  --color-cream: #FFFBF6;
 }
 
+/* Short landscape viewports (embedded iframe ~800x520, phones sideways). */
+@custom-variant short (@media (max-height: 600px));
+
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  background-color: #ffffff;
-  overflow-x: hidden;
+  @apply bg-cream text-stone-900 font-sans antialiased;
 }
 
 #root {
-  width: 100%;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+  @apply flex min-h-dvh w-full flex-col;
 }
 
-/* Mobile-first responsive design */
-@media (max-width: 640px) {
-  body {
-    font-size: 14px;
-  }
+:focus-visible {
+  @apply outline-2 outline-offset-2 outline-brand-700;
 }
 
-/* Prevent text selection on mobile for better UX */
-@media (max-width: 768px) {
+@media (hover: none) {
   * {
     -webkit-tap-highlight-color: transparent;
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
