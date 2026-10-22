@@ -53,7 +53,7 @@ That is exactly this app's job, so the whole system borrows from it:
 | `--color-accent-soft` | `oklch(93% 0.04 35)` | #ffdfd6 | highlight wash (ingredients used in this step) | ink on it 14.2:1 |
 | `--color-focus` | = ink | | 3 px outline, 3 px offset | ≥ 3:1 everywhere |
 
-**Accent discipline.**
+**Accent discipline.** The current step's giant numeral and the listening dot are tomato.
 
 - No more than 5 % of any viewport is tomato, and tomato always means *live or now*.
 - Primary buttons are **ink**, not orange.
@@ -69,7 +69,7 @@ That is exactly this app's job, so the whole system borrows from it:
   - Quantities, times, timer clocks, step numbers, counts, header-strip labels, the HEARD strip.
   - Labels are UPPERCASE at weight 600 with tracking +0.06em.
 - **Scale.** Fluid `clamp()` values, defined in the Tailwind theme as the `--text-*` tokens below.
-  - `--text-step`: `clamp(1.75rem, min(0.75rem + 4.4vw, 9vh), 4.5rem)`, 700, line-height 1.12. That is about 29 px on a 390 phone, 46 px on a portrait tablet, 57 px at 1024 and the 72 px cap from about 1450 px; the `vh` term keeps short embeds (800×520) from overflowing. Long steps (more than 140 characters) step down one rung to `--text-step-s`: `clamp(1.4rem, min(0.7rem + 3.2vw, 7vh), 3.25rem)`.
+  - `--text-step`: `clamp(1.75rem, min(11cqi, 12cqb), 4.5rem)`, 700, line-height 1.12. These are **container units**: the step body is a size container (`container-type: size`), so the instruction grows to fill whatever space the ticket actually has. That gives about 37 px on a phone ticket, about 54 px on a landscape tablet and the 72 px cap on a laptop, and it never overflows a short embed. Long steps (more than 140 characters) step down one rung to `--text-step-s`: `clamp(1.4rem, min(8.5cqi, 9.5cqb), 3.25rem)`. Outside a size container the units fall back to the viewport.
   - `--text-clock`: `clamp(2.75rem, 1.8rem + 4vw, 6rem)`, mono, tabular.
   - `--text-title`: `clamp(1.75rem, 1.3rem + 1.6vw, 2.75rem)`, 800, tracking −0.01em.
   - `--text-ticket`: `1.125rem`, 800, for recipe ticket titles.
@@ -156,8 +156,8 @@ The wordmark (the mono label "CULINARY COMPANION" with a ticket-notch glyph), th
   --font-sans: "Atkinson Hyperlegible Next Variable", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Atkinson Hyperlegible Mono Variable", ui-monospace, monospace;
 
-  --text-step: clamp(1.75rem, min(0.75rem + 4.4vw, 9vh), 4.5rem);
-  --text-step-s: clamp(1.4rem, min(0.7rem + 3.2vw, 7vh), 3.25rem);
+  --text-step: clamp(1.75rem, min(11cqi, 12cqb), 4.5rem);
+  --text-step-s: clamp(1.4rem, min(8.5cqi, 9.5cqb), 3.25rem);
   --text-clock: clamp(2.75rem, 1.8rem + 4vw, 6rem);
   --text-title: clamp(1.75rem, 1.3rem + 1.6vw, 2.75rem);
   --text-ticket: 1.125rem;

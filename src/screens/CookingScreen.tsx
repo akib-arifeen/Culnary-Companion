@@ -92,6 +92,7 @@ function CookingSession({ recipe }: { recipe: Recipe }) {
     }),
   )
   const [panelOpen, setPanelOpen] = useState(() => !onboarded)
+  const [panelSection, setPanelSection] = useState<'voice' | 'gestures' | null>(null)
   const [learned, setLearned] = useState<ReadonlySet<GestureName>>(() => new Set())
   const [heard, setHeard] = useState<HeardData | null>(null)
   const [inIframe] = useState(readInIframe)
@@ -116,8 +117,9 @@ function CookingSession({ recipe }: { recipe: Recipe }) {
     setHeard({ key: heardKey.current, kind, text, heard: heardText })
   }
 
-  const openPanel = () => {
+  const openPanel = (section?: 'voice' | 'gestures') => {
     setLearned(new Set())
+    setPanelSection(section ?? null)
     setPanelOpen(true)
   }
 
@@ -340,14 +342,20 @@ function CookingSession({ recipe }: { recipe: Recipe }) {
   const mode = pipMode({ gesturesOn: gesturesPref, previewPref: cameraPreview, gesturesStatus: gestures.status })
 
   // Ingredients the CURRENT step mentions get the "THIS STEP" highlight.
-  const usedNow = new Set(ingredientsInStep(ingredientNames, step.instruction))
+  const usedIndices = ingredientsInStep(ingredientNames, step.instruction)
+  const usedNow = new Set(usedIndices)
+  const usedNames = usedIndices.map((i) => recipe.ingredients[i].name)
 
   // With no tabs, "show ingredients / timers" (voice, key, gesture) brings that section into view in the rail.
   const tab = state.tab
   useEffect(() => {
     if (layout === 'tabs') return
     const el = tab === 'ingredients' ? ingredientsRef.current : tab === 'timers' ? timersRef.current : null
-    el?.scrollIntoView?.({ block: 'nearest' })
+    if (!el) return
+    // Scroll only the rail's own container, never the page (scrollIntoView could move the clipped ancestors).
+    const box = el.closest<HTMLElement>('[data-rail-scroll]')
+    if (box) box.scrollTo?.({ top: el.offsetTop - box.offsetTop })
+    else el.scrollTo?.({ top: 0 })
   }, [tab, layout])
 
   // "Try again" = off, then on again shortly after. The pending "on" must never outlive the screen or a manual toggle,
@@ -375,6 +383,8 @@ function CookingSession({ recipe }: { recipe: Recipe }) {
   const heardStrip = (
     <HeardStrip
       framed={layout === 'lg'}
+      compact={layout === 'tabs'}
+      onFix={openPanel}
       heard={heard}
       voiceOn={voicePref}
       voiceStatus={voice.status}
@@ -403,7 +413,9 @@ function CookingSession({ recipe }: { recipe: Recipe }) {
       nextInstruction={nextStep?.instruction}
       onStartTimer={() => run({ type: 'startTimer' }, 'tap')}
       onToggleTimer={timers.toggle}
+      onResetTimer={timers.reset}
       hideNumeral={layout === 'tabs' && mode !== 'none'}
+      uses={usedNames}
     />
   )
 
@@ -414,6 +426,7 @@ function CookingSession({ recipe }: { recipe: Recipe }) {
       recipeId={recipe.id}
       stepDuration={stepTimer || layout !== 'tabs' ? undefined : step.duration}
       stepNumber={stepNumber}
+      stepChipVisible={layout !== 'tabs'}
       onStartPreset={startTimer}
       onStartStepTimer={() => run({ type: 'startTimer' }, 'tap')}
       onToggle={timers.toggle}
@@ -447,7 +460,7 @@ function CookingSession({ recipe }: { recipe: Recipe }) {
   return (
     <>
       <div ref={layoutRef} data-layout={layout} className="flex h-[100dvh] flex-col overflow-hidden bg-paper-2 text-ink">
-        <TopBar recipeId={recipe.id} title={recipe.title} stepIndex={state.stepIndex} stepCount={state.stepCount} onOpenHelp={openPanel} />
+        <TopBar recipeId={recipe.id} title={recipe.title} stepIndex={state.stepIndex} stepCount={state.stepCount} onOpenHelp={() => openPanel()} />
         {layout === 'lg' ? null : heardStrip}
         {layout === 'tabs' ? (
           <CookingTabs
@@ -463,11 +476,14 @@ function CookingSession({ recipe }: { recipe: Recipe }) {
           {layout === 'lg' ? (
             <div className="grid h-full grid-cols-[62fr_38fr] gap-4 p-4">
               <div className="min-h-0 min-w-0">{stepTicket}</div>
-              <div className="flex min-h-0 min-w-0 flex-col gap-3 overflow-y-auto">
+              <div className="flex min-h-0 min-w-0 flex-col gap-3">
+                {/* Pinned: the HEARD strip and the camera preview never scroll away. */}
                 {heardStrip}
                 {pip}
-                <div ref={timersRef}>{timersPanel}</div>
-                <div ref={ingredientsRef}>{ingredientsPanel}</div>
+                <div data-rail-scroll className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
+                  <div ref={timersRef}>{timersPanel}</div>
+                  <div ref={ingredientsRef}>{ingredientsPanel}</div>
+                </div>
               </div>
             </div>
           ) : layout === 'md' ? (
@@ -483,7 +499,7 @@ function CookingSession({ recipe }: { recipe: Recipe }) {
               </div>
             </div>
           ) : (
-            <div id="cooking-panel" role="tabpanel" aria-labelledby={`cooking-tab-${state.tab}`} className={`h-full overflow-y-auto p-3 ${reserve}`}>
+            <div id="cooking-panel" role="tabpanel" aria-labelledby={`cooking-tab-${state.tab}`} className={`h-full overflow-y-auto p-2 sm:p-3 ${reserve}`}>
               {state.tab === 'steps' ? <div className="h-full min-h-0">{stepTicket}</div> : state.tab === 'ingredients' ? ingredientsPanel : timersPanel}
             </div>
           )}
@@ -530,6 +546,7 @@ function CookingSession({ recipe }: { recipe: Recipe }) {
           speakSteps={speakSteps}
           onToggleSpeakSteps={() => setSpeakSteps(!speakSteps)}
           ingredientExample={ingredientNames[0]?.toLowerCase() ?? ''}
+          focusSection={panelSection}
           inIframe={inIframe}
         />
       ) : null}

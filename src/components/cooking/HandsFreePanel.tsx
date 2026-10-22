@@ -1,4 +1,4 @@
-import { useId, useRef, type ReactNode, type RefObject } from 'react'
+import { useEffect, useId, useRef, type ReactNode, type RefObject } from 'react'
 import { CircleCheck, ExternalLink, Hand, Mic, TriangleAlert, Volume2, X } from 'lucide-react'
 import type { GestureLive, SpeechCommandsApi } from '../../hooks/contracts'
 import { describeCommand } from '../../lib/commands'
@@ -37,6 +37,8 @@ interface HandsFreePanelProps {
   /** Lower-case name of the recipe's first ingredient, for the "check ..." example. */
   ingredientExample: string
   inIframe: boolean
+  /** Open scrolled to this part (the HEARD strip's FIX button). */
+  focusSection?: 'voice' | 'gestures' | null
 }
 
 /** A real switch: role=switch, a visible On/Off word (colour is never the only cue), 56 px tall. */
@@ -100,12 +102,14 @@ function GestureTile({
   gesture,
   title,
   action,
+  hint,
   state,
   progress,
 }: {
   gesture: GestureName
   title: string
   action: string
+  hint: string
   state: 'idle' | 'holding' | 'learned'
   progress: number
 }) {
@@ -122,8 +126,10 @@ function GestureTile({
         </span>
       </span>
       <span className="min-w-0">
-        <span className="block text-base leading-tight font-bold text-ink">{title}</span>
-        <span className="block text-sm leading-tight text-ink-2">{action}</span>
+        <span className="block text-base leading-tight font-bold text-ink">
+          {title} · {action}
+        </span>
+        <span className="mt-0.5 block text-sm leading-snug text-ink-2">{hint}</span>
         <span className="sr-only">{state === 'learned' ? 'Learned' : state === 'holding' ? 'Holding' : 'Not tried yet'}</span>
       </span>
     </li>
@@ -169,11 +175,15 @@ export default function HandsFreePanel({
   onToggleSpeakSteps,
   ingredientExample,
   inIframe,
+  focusSection = null,
 }: HandsFreePanelProps) {
   const dialogRef = useRef<HTMLDivElement>(null)
   const headingRef = useRef<HTMLHeadingElement>(null)
   const titleId = useId()
   useDialogFocus(dialogRef, headingRef, onClose)
+  useEffect(() => {
+    if (focusSection) document.getElementById(`${titleId}-${focusSection}`)?.scrollIntoView?.({ block: 'start' })
+  }, [focusSection, titleId])
 
   const practised = GESTURE_GUIDE.filter((g) => learned.has(g.gesture)).length
   const phrases = ['next', 'back', 'repeat', 'ingredients', 'timer for 5 minutes', ingredientExample ? `check ${ingredientExample}` : '', 'stop', 'help'].filter(Boolean)
@@ -187,7 +197,7 @@ export default function HandsFreePanel({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="ticket flex h-full w-full flex-col max-sm:rounded-none! max-sm:border-0! sm:h-auto sm:max-h-[min(100%,56rem)] sm:max-w-3xl"
+        className="ticket flex h-full w-full flex-col max-sm:rounded-none! max-sm:border-0! sm:h-auto sm:max-h-[min(100%,56rem)] sm:max-w-2xl"
       >
         <div className="flex shrink-0 items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <h2 id={titleId} ref={headingRef} tabIndex={-1} className="flex min-w-0 flex-col outline-hidden">
@@ -205,8 +215,8 @@ export default function HandsFreePanel({
         </div>
         <div className="perforation shrink-0" aria-hidden="true" />
 
-        <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto p-4 sm:p-6 lg:grid-cols-2 lg:items-start">
-          <Part n={1} id={`${titleId}-voice`} title="Voice" className="lg:row-span-2">
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 sm:p-6">
+          <Part n={1} id={`${titleId}-voice`} title="Voice">
             <p className="text-base text-ink">Say what you want and the recipe follows. Hands stay on the food.</p>
             <Switch on={voiceOn} onToggle={onToggleVoice} icon={<Mic className="size-6 shrink-0" strokeWidth={2} aria-hidden="true" />}>
               Voice commands
@@ -222,21 +232,29 @@ export default function HandsFreePanel({
                 on: 'Listening. Uses your browser’s speech service.',
               }}
             />
-            <div className="rounded-(--radius-ticket) border-2 border-ink-2 bg-paper p-3">
-              <Label>Test it</Label>
-              <p className="mt-1 text-xl font-bold text-ink">Say “next” to test</p>
-              <p aria-live="polite" className="mt-1 min-h-6 text-base text-ink">
-                {speaking ? (
-                  <span className="text-ink-2">Listening resumes when I finish speaking.</span>
-                ) : voice.heard ? (
-                  <>
-                    Heard: “{voice.heard}”{understood ? <span className="font-bold"> Understood: {describeCommand(understood)}</span> : null}
-                  </>
-                ) : (
-                  <span className="text-ink-2">Heard: nothing yet</span>
-                )}
-              </p>
-            </div>
+            {voiceOn ? (
+              <div className="rounded-(--radius-ticket) border-2 border-ink-2 bg-paper p-3">
+                <Label>Test it</Label>
+                <p className="mt-1 text-xl font-bold text-ink">Say “next” to test</p>
+                <p className="mt-1 min-h-6 text-base text-ink">
+                  {voice.heard ? (
+                    <>
+                      Heard: “{voice.heard}”{understood ? <span className="font-bold"> Understood: {describeCommand(understood)}</span> : null}
+                    </>
+                  ) : (
+                    <span className="text-ink-2">Heard: nothing yet</span>
+                  )}
+                </p>
+              </div>
+            ) : (
+              <div aria-disabled="true" className="rounded-(--radius-ticket) border-2 border-dashed border-rule bg-paper p-3 opacity-60">
+                <Label>Test it</Label>
+                <p className="mt-1 text-xl font-bold text-ink-2">Turn voice on first</p>
+              </div>
+            )}
+            <p aria-live="polite" className="text-base text-ink-2">
+              {speaking ? 'Listening resumes when I finish speaking.' : null}
+            </p>
             <p className="text-sm text-ink-2">I stop listening while I read a step aloud. Speak after I finish, or tap Stop reading.</p>
             <ul className="flex flex-wrap gap-2">
               {phrases.map((phrase) => (
@@ -283,18 +301,18 @@ export default function HandsFreePanel({
             <p aria-live="polite" className="label-mono text-base! text-ink!">
               Practised {practised} of {GESTURE_GUIDE.length}
             </p>
-            <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-2">
+            <ul className="grid grid-cols-1 gap-2 min-[30rem]:grid-cols-2">
               {GESTURE_GUIDE.map((entry) => {
                 const holding = gesturesOn && live.gesture === entry.gesture
                 const state = learned.has(entry.gesture) ? 'learned' : holding ? 'holding' : 'idle'
-                return <GestureTile key={entry.gesture} gesture={entry.gesture} title={entry.title} action={entry.action} state={state} progress={live.progress} />
+                return <GestureTile key={entry.gesture} gesture={entry.gesture} title={entry.title} action={entry.action} hint={entry.hint} state={state} progress={live.progress} />
               })}
             </ul>
           </Part>
 
           <Part n={3} id={`${titleId}-keys`} title="Touch and keys">
             <p className="text-base text-ink">The big buttons at the bottom work with a wet thumb. A keyboard works too.</p>
-            <ul className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2 lg:grid-cols-1">
+            <ul className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
               {KEY_GUIDE.map((entry) => (
                 <li key={entry.action} className="flex items-center justify-between gap-3 text-base text-ink">
                   <span>{entry.action}</span>

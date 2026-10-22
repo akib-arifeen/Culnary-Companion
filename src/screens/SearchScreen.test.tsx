@@ -46,7 +46,7 @@ describe('SearchScreen (/search = Recipes with the filter focused)', () => {
     await userEvent.type(screen.getByLabelText(/filter by title/i), 'zzzz')
     expect(screen.getByText('No recipe matches that')).toBeTruthy()
     expect(screen.getByText('0 of 2 match “zzzz”')).toBeTruthy()
-    await userEvent.click(screen.getByRole('button', { name: 'Clear filter' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Show all recipes' }))
     expect(titles()).toEqual(['Alpha Stew', 'Beta Toast'])
   })
 })

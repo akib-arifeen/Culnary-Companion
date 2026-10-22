@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { Button, ButtonLink, Label, Ticket } from '../components/ui/primitives'
+import { Search, X } from 'lucide-react'
+import { Button, Ticket } from '../components/ui/primitives'
 import Page from '../components/Page'
+import ResumeTicket from '../components/ResumeTicket'
 import RecipeRail from '../components/RecipeRail'
 import { getRecipeById, recipes } from '../data/recipes'
 import type { Recipe } from '../data/types'
@@ -40,15 +42,32 @@ const HomeScreen = ({ focusFilter = false }: { focusFilter?: boolean }) => {
         <label htmlFor="recipe-filter" className="label-mono mb-2 block text-ink-2">
           Filter by title, ingredient or category
         </label>
-        <input
-          id="recipe-filter"
-          ref={filterRef}
-          type="search"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          autoComplete="off"
-          className="h-12 w-full rounded-control border-2 border-ink-2 bg-paper px-4 text-lg text-ink"
-        />
+        <div className="relative">
+          <Search size={20} aria-hidden="true" className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ink-2" />
+          <input
+            id="recipe-filter"
+            ref={filterRef}
+            type="text"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Soup, lentils, flatbread…"
+            autoComplete="off"
+            className="h-12 w-full rounded-control border-2 border-ink-2 bg-paper pl-12 pr-12 text-lg text-ink placeholder:text-ink-2"
+          />
+          {query ? (
+            <button
+              type="button"
+              aria-label="Clear filter"
+              onClick={() => {
+                setQuery('')
+                filterRef.current?.focus()
+              }}
+              className="absolute right-0 top-1/2 flex size-12 -translate-y-1/2 cursor-pointer items-center justify-center text-ink"
+            >
+              <X size={20} aria-hidden="true" />
+            </button>
+          ) : null}
+        </div>
         <p aria-live="polite" className="label-mono mt-2 text-ink-2">
           {words.length === 0
             ? `${recipes.length} ${recipes.length === 1 ? 'recipe' : 'recipes'}`
@@ -57,27 +76,18 @@ const HomeScreen = ({ focusFilter = false }: { focusFilter?: boolean }) => {
       </div>
 
       {resuming.length > 0 && (
-        <Ticket
-          className="mt-8"
-          header={<Label as="h2" className="text-ink">Pick up where you left off</Label>}
-          bodyClassName="p-0"
-        >
-          <ul className="divide-y divide-dashed divide-rule">
+        <section className="mt-8" aria-labelledby="resume-title">
+          <h2 id="resume-title" className="label-mono mb-3 text-ink">
+            Pick up where you left off
+          </h2>
+          <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {resuming.map(({ recipe, step }) => (
-              <li key={recipe.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5">
-                <div className="min-w-0">
-                  <p className="text-ticket font-extrabold text-ink">{recipe.title}</p>
-                  <Label>
-                    Step {step + 1} of {recipe.steps.length}
-                  </Label>
-                </div>
-                <ButtonLink to={`/cooking/${recipe.id}`} aria-label={`Resume ${recipe.title}`} className="whitespace-nowrap">
-                  Resume
-                </ButtonLink>
+              <li key={recipe.id} className="min-w-0">
+                <ResumeTicket recipe={recipe} step={step} />
               </li>
             ))}
           </ul>
-        </Ticket>
+        </section>
       )}
 
       <section className="mt-8" aria-labelledby="rail-title">
@@ -91,7 +101,7 @@ const HomeScreen = ({ focusFilter = false }: { focusFilter?: boolean }) => {
             <h3 className="text-ticket font-extrabold text-ink">No recipe matches that</h3>
             <p className="text-ink-2">Try one ingredient or a category, or clear the filter to see every recipe.</p>
             <Button onClick={() => setQuery('')} className="whitespace-nowrap">
-              Clear filter
+              Show all recipes
             </Button>
           </Ticket>
         )}

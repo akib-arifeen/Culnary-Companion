@@ -19,7 +19,7 @@ function minutesIn(text: string): number | null {
   return found ? Math.round(total) : null
 }
 
-/** "32 MIN", "2 H", "1 H 20 MIN", "~1 H 20 MIN"; a stated total wins, otherwise stated amounts are summed. */
+/** "32 MIN", "2 HR", "1 HR 20 MIN", "~1 HR 20 MIN"; a stated total wins, otherwise stated amounts are summed. */
 export function shortTime(time?: string): string | null {
   if (!time) return null
   const totalAt = time.search(/total\s*:?/i)
@@ -29,6 +29,6 @@ export function shortTime(time?: string): string | null {
   const approx = /~|about|approx/i.test(time) ? '~' : ''
   const h = Math.floor(minutes / 60)
   const m = minutes % 60
-  const body = h === 0 ? `${m} MIN` : m === 0 ? `${h} H` : `${h} H ${m} MIN`
+  const body = h === 0 ? `${m} MIN` : m === 0 ? `${h} HR` : `${h} HR ${m} MIN`
   return approx + body
 }

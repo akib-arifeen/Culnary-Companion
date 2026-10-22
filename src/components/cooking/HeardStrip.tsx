@@ -25,7 +25,7 @@ function isFailed(status: MediaStatus): boolean {
 
 /** Mono state call-out, at least 0.95 rem so it reads from a metre away. */
 function State({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return <Label className={`inline-flex items-center gap-2.5 text-base! text-ink! ${className}`}>{children}</Label>
+  return <Label className={`inline-flex items-center gap-2.5 text-lg! text-ink! ${className}`}>{children}</Label>
 }
 
 function Dot({ on }: { on: 'live' | 'solid' | 'hollow' }) {
@@ -72,6 +72,9 @@ interface HeardStripProps {
   onRetryGestures: () => void
   /** Boxed as a ticket in the rail; an edge-to-edge bar everywhere else. */
   framed: boolean
+  /** Phones: ONE line of at most 40 px (state + last heard); problems become a FIX button that opens the help sheet. */
+  compact: boolean
+  onFix: (section: 'voice' | 'gestures') => void
 }
 
 /**
@@ -92,6 +95,8 @@ export default function HeardStrip({
   onRetryVoice,
   onRetryGestures,
   framed,
+  compact,
+  onFix,
 }: HeardStripProps) {
   const flashRef = useRef<HTMLSpanElement>(null)
   const heardKey = heard?.key
@@ -101,6 +106,64 @@ export default function HeardStrip({
     // Web Animations: opacity only, no state, and absent in jsdom.
     flashRef.current?.animate?.([{ opacity: 1 }, { opacity: 0 }], { duration: FLASH_MS, easing: 'ease-out' })
   }, [heardKey])
+
+  if (compact) {
+    const micBad = voiceOn && isFailed(voiceStatus)
+    const camBad = gesturesOn && isFailed(gesturesStatus)
+    const bad = micBad ? 'voice' : camBad ? 'gestures' : null
+    const word = (status: MediaStatus) => (status === 'denied' ? 'blocked' : status === 'unavailable' ? 'unavailable' : 'error')
+    let state: ReactNode
+    if (micBad) {
+      state = <><TriangleAlert className="size-5 shrink-0" strokeWidth={2} aria-hidden="true" />Mic {word(voiceStatus)}</>
+    } else if (camBad) {
+      state = <><TriangleAlert className="size-5 shrink-0" strokeWidth={2} aria-hidden="true" />Camera {word(gesturesStatus)}</>
+    } else if (!voiceOn) {
+      state = <><Dot on="hollow" />Voice off</>
+    } else if (voiceStatus === 'on' && speaking) {
+      state = <><Dot on="hollow" />Mic paused</>
+    } else if (voiceStatus === 'on') {
+      state = <><Dot on="live" />Listening</>
+    } else {
+      state = <><Dot on="hollow" />Starting mic…</>
+    }
+    return (
+      <div
+        role="status"
+        aria-live="polite"
+        data-compact="true"
+        className="relative flex h-10 shrink-0 items-center gap-3 overflow-hidden border-b border-rule bg-paper px-3"
+      >
+        <span ref={flashRef} aria-hidden="true" className="pointer-events-none absolute inset-0 bg-accent-soft opacity-0" />
+        <State className={`relative shrink-0 ${bad ? 'text-accent!' : ''}`}>{state}</State>
+        {/* Mic / camera detail the one-line state cannot carry; a screen reader still hears it. */}
+        <span className="sr-only">
+          {speaking && voiceOn && voiceStatus === 'on' ? 'Mic paused while I read. ' : ''}
+          {gesturesOn ? (gesturesStatus === 'on' ? 'Camera on.' : '') : 'Gestures off.'}
+        </span>
+        <Hand aria-hidden="true" strokeWidth={2} className={`relative size-5 shrink-0 ${gesturesOn && gesturesStatus === 'on' ? 'text-ink' : camBad ? 'text-accent' : 'text-ink-2 opacity-50'}`} />
+        <span className="relative flex min-w-0 flex-1 items-baseline gap-2">
+          {heard ? (
+            <>
+              <Label className="shrink-0 text-base! text-ink!">{KIND_LABEL[heard.kind]}</Label>
+              <span key={heard.key} className="min-w-0 truncate text-xl font-bold text-ink">
+                {heard.text}
+                {heard.heard ? <span className="ml-2 font-normal text-ink-2">“{heard.heard}”</span> : null}
+              </span>
+            </>
+          ) : null}
+        </span>
+        {bad ? (
+          <Button variant="secondary" onClick={() => onFix(bad)} aria-label={`Fix ${bad === 'voice' ? 'microphone' : 'camera'}`} className="relative min-h-9! shrink-0 px-3!">
+            Fix
+          </Button>
+        ) : !voiceOn ? (
+          <Button variant="secondary" onClick={onTurnOnVoice} aria-label="Turn on voice" className="relative min-h-9! shrink-0 px-3!">
+            Turn on
+          </Button>
+        ) : null}
+      </div>
+    )
+  }
 
   let mic: ReactNode
   if (!voiceOn) {
@@ -165,24 +228,24 @@ export default function HeardStrip({
       className={`relative shrink-0 overflow-hidden bg-paper ${framed ? 'ticket' : 'border-b border-rule'}`}
     >
       <span ref={flashRef} aria-hidden="true" className="pointer-events-none absolute inset-0 bg-accent-soft opacity-0" />
-      <div className="relative flex flex-wrap items-center gap-x-6 gap-y-1.5 px-3 py-2 sm:px-5">
+      <div className="relative flex flex-col gap-1.5 px-3 py-2 sm:px-5">
         <div className="flex flex-wrap items-center gap-x-6 gap-y-1.5">
           <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">{mic}</div>
           <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">{camera}</div>
         </div>
-        <p className="flex min-w-0 flex-1 basis-72 items-baseline gap-3">
-          <Label className="shrink-0 text-base! text-ink!">{heard ? KIND_LABEL[heard.kind] : 'Heard'}</Label>
-          {heard ? (
-            <span key={heard.key} className="line-clamp-2 min-w-0 text-lg font-bold break-words text-ink short:line-clamp-1">
-              {heard.text}
-              {heard.heard ? <span className="ml-3 font-normal text-ink-2">“{heard.heard}”</span> : null}
-            </span>
-          ) : (
-            <span className="line-clamp-2 min-w-0 text-lg text-ink-2 short:line-clamp-1">
-              {voiceOn ? 'Say “next”, “back” or “repeat”.' : 'Voice is off. Use the buttons or keys.'}
-            </span>
-          )}
-        </p>
+        {heard || voiceOn ? (
+          <p className="flex min-w-0 items-baseline gap-3">
+            <Label className="shrink-0 text-lg! text-ink!">{heard ? KIND_LABEL[heard.kind] : 'Heard'}</Label>
+            {heard ? (
+              <span key={heard.key} className="line-clamp-2 min-w-0 text-xl font-bold break-words text-ink">
+                {heard.text}
+                {heard.heard ? <span className="ml-3 font-normal text-ink-2">“{heard.heard}”</span> : null}
+              </span>
+            ) : (
+              <span className="line-clamp-2 min-w-0 text-xl text-ink-2">Say “next”, “back” or “repeat”.</span>
+            )}
+          </p>
+        ) : null}
       </div>
     </div>
   )

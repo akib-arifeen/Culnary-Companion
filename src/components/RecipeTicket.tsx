@@ -9,6 +9,14 @@ interface RecipeTicketProps {
   note?: string
 }
 
+/** Rendered photo width per breakpoint, so the browser picks the 600px or 1200px file. Mirrors RecipeRail's grid. */
+const PHOTO_SIZES = '(min-width: 1280px) 400px, (min-width: 640px) 50vw, 100vw' // ds-allow-hardcode: responsive-image hints, not design values
+
+/** Every photo also ships as a 600px-wide "-600.webp" variant for phones (asserted in src/data/recipes.test.ts). */
+function smallVariant(src: string): string {
+  return src.replace(/\.webp$/, '-600.webp')
+}
+
 /** One order on the rail: mono header strip, perforation, then photo, title, summary. */
 export default function RecipeTicket({ recipe, note }: RecipeTicketProps) {
   const left = [
@@ -33,11 +41,13 @@ export default function RecipeTicket({ recipe, note }: RecipeTicketProps) {
       >
         <img
           src={recipe.photo.src}
+          srcSet={`${smallVariant(recipe.photo.src)} 600w, ${recipe.photo.src} 1200w`}
+          sizes={PHOTO_SIZES}
           alt={recipe.photo.alt}
           width={recipe.photo.width}
           height={recipe.photo.height}
           loading="lazy"
-          className="aspect-4/3 w-full rounded-ticket border border-rule object-cover"
+          className="aspect-4/3 w-full rounded-ticket border border-rule bg-paper-2 object-cover"
         />
         <div className="flex grow flex-col gap-1.5">
           {note ? <Label className="text-ink">{note}</Label> : null}
@@ -47,8 +57,15 @@ export default function RecipeTicket({ recipe, note }: RecipeTicketProps) {
             {n} {n === 1 ? 'ingredient' : 'ingredients'}
           </Label>
         </div>
-        <Label className="normal-case! tracking-normal!">
-          Photo: {recipe.photo.author} · {recipe.photo.license}
+        <Label
+          as="p"
+          className="flex min-w-0 gap-1 whitespace-nowrap normal-case! tracking-normal!"
+        >
+          <span className="shrink-0">Photo:</span>
+          <span className="min-w-0 truncate" title={recipe.photo.author}>
+            {recipe.photo.author}
+          </span>
+          <span className="shrink-0">· {recipe.photo.license}</span>
         </Label>
       </Ticket>
     </Link>

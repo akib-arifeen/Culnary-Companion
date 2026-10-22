@@ -59,6 +59,8 @@ describe('recipe content (product truth)', () => {
   it.each(recipes.map((r) => [r.id, r] as const))('%s: has a self-hosted, freely licensed, credited photo', (_id, r) => {
     expect(r.photo.src).toMatch(/^\/recipes\/[a-z0-9-]+\.webp$/)
     expect(existsSync(join(PUBLIC, r.photo.src))).toBe(true)
+    // Phones get the 600px variant via srcset (RecipeTicket); it must exist for every photo.
+    expect(existsSync(join(PUBLIC, r.photo.src.replace(/\.webp$/, '-600.webp')))).toBe(true)
     expect(r.photo.width).toBeGreaterThan(0)
     expect(r.photo.height).toBeGreaterThan(0)
     expect(r.photo.alt.trim().length).toBeGreaterThan(8)

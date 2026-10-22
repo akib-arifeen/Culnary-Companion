@@ -16,12 +16,17 @@ Screenshots are from automated browser runs, where the "camera" is a looped vide
 
 ## What it does
 
-- Eight cookable recipes with photos, ingredient lists and timed steps.
-- A cooking mode that shows one step at a time, large and readable from across the kitchen.
+- Eight real recipes adapted from the [Wikibooks Cookbook](https://en.wikibooks.org/wiki/Cookbook:Table_of_Contents), each with a photo of the actual dish from Wikimedia Commons. Source page, revision, licence and photographer are credited on every recipe.
+- Timers on the steps whose instructions state a time. No invented difficulty ratings or totals.
+- A cooking mode that shows one step at a time, large and readable from across the kitchen. On a tablet or laptop it also shows the running timers and the ingredients the current step uses.
 - Control it by tapping, with the keyboard, by voice, or with hand gestures. Every method triggers the same commands.
 - Kitchen timers that keep running when you leave the cooking screen. They chime when they finish, and the cooking screen also announces them aloud.
 - Saved recipes and per-recipe progress, kept in your browser.
 - A short hands-free tutorial with live gesture practice, and a help sheet you can open at any time.
+
+## Design
+
+The design direction is **"The Pass"**: the ticket rail of a restaurant kitchen, where orders are read at a glance across a noisy line and called out ("Heard!"). That matches the app's job: read from a metre away, with wet hands, voice first. It uses [Atkinson Hyperlegible Next](https://fonts.google.com/specimen/Atkinson+Hyperlegible+Next) (designed for legibility) for text and its mono cut for every quantity, time and timer. Text is ink on ticket paper, and a single tomato accent is reserved for what is live right now. The full system, with its tokens and the reasoning behind each choice, is in [`DESIGN.md`](DESIGN.md). The audit that led to it is in [`docs/audit/AUDIT.md`](docs/audit/AUDIT.md).
 
 ## Hands-free controls
 
@@ -133,7 +138,7 @@ Every input becomes a `Command`, and the cooking screen handles commands in exac
 
 ### Testing
 
-There are over 800 automated tests (`npm test`) covering the voice grammar, the gesture stabilizer, timers, the media hooks and the screens. The core logic was also mutation-tested: deliberately planted bugs were run against the suite, and tests were added for the ones it missed. On top of that, browser probes ran in Chromium with fake camera and microphone devices. They covered real MediaPipe recognition of all six gestures from photos, voice through a stand-in for the browser speech service, the permission-denied UI, and a cross-origin iframe with and without camera and microphone permission.
+There are over 900 automated tests (`npm test`) covering the voice grammar, the gesture stabilizer, timers, the media hooks, the screens, and the recipe content itself. The content tests check that every timer is backed by a time the step text states, and that every photo is self-hosted and carries a free licence and credit. The core logic was also mutation-tested: deliberately planted bugs were run against the suite, and tests were added for the ones it missed. On top of that, browser probes ran in Chromium with fake camera and microphone devices. They covered real MediaPipe recognition of all six gestures from photos, voice through a stand-in for the browser speech service, the permission-denied UI, and a cross-origin iframe with and without camera and microphone permission.
 
 ## Tech stack
 
@@ -158,10 +163,13 @@ src/
   hooks/        gesture recognition, speech recognition and speech synthesis hooks
   context/      recipes (saved, progress) and kitchen timers
   screens/      home, recipe, cooking, search, saved, in progress, settings
-  components/   shared UI: header, bottom nav, recipe card, timer banner
-  data/         recipe content
+  components/   shared UI: ui/ primitives (ticket, buttons, labels), nav, recipe tickets, cooking/ (cooking mode)
+  styles/       design tokens (Tailwind @theme), see DESIGN.md
+  data/         recipe content (adapted from Wikibooks) and its contract
+content/        raw source wikitext + metadata per recipe, and the licence notes
+scripts/        fetch-content.mjs (re-fetch sources and photos), copy-mediapipe-wasm.mjs
 public/
-  recipes/      recipe photos and CREDITS.md
+  recipes/      recipe photos (1200 px and 600 px webp)
   models/       MediaPipe gesture recognizer model
   mediapipe/    self-hosted WebAssembly runtime (copied from node_modules at build)
 ```
@@ -169,7 +177,9 @@ public/
 ## Credits
 
 - Hand gesture model: Google MediaPipe Gesture Recognizer, Apache-2.0.
-- Food photos: Unsplash, used under the [Unsplash License](https://unsplash.com/license). Sources are listed in `public/recipes/CREDITS.md`.
+- Recipes: adapted from the Wikibooks Cookbook (Wikibooks contributors) under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). The adapted recipe text in `src/data/recipes.ts` and `content/` is therefore CC BY-SA 4.0. Each recipe links its source page and exact revision in the app.
+- Food photos: Wikimedia Commons, each under its own free licence (CC BY-SA or CC0). Credited per photo in the app and in `content/sources/*.meta.json`.
+- Fonts: Atkinson Hyperlegible Next and Atkinson Hyperlegible Mono by the Braille Institute, SIL Open Font License 1.1.
 
 ## Course context
 

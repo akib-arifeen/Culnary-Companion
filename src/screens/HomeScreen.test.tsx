@@ -30,7 +30,8 @@ describe('HomeScreen (Recipes)', () => {
     expect(within(rail).getByText('45 MIN')).toBeTruthy()
     // The bare fixture states no servings or time: only the computed step count appears.
     expect(within(rail).getByText('2 steps')).toBeTruthy()
-    expect(within(rail).getByText('Photo: Ben Baker · Public domain')).toBeTruthy()
+    expect(within(rail).getByText('Ben Baker')).toBeTruthy()
+    expect(within(rail).getByText('· Public domain')).toBeTruthy()
     expect(within(rail).getByText('2 ingredients')).toBeTruthy()
     expect(screen.getByText('2 recipes')).toBeTruthy()
   })
@@ -53,6 +54,18 @@ describe('HomeScreen (Recipes)', () => {
     window.localStorage.setItem(PREF_KEYS.progress, JSON.stringify({ '3': 1 }))
     renderHome()
     expect(screen.queryByText('Pick up where you left off')).toBeNull()
+  })
+
+  it('shows a clear button only when the filter has text, and it empties and refocuses the filter', async () => {
+    renderHome()
+    expect(screen.queryByRole('button', { name: 'Clear filter' })).toBeNull()
+    const input = screen.getByLabelText(/filter by title/i) as HTMLInputElement
+    expect(input.placeholder).toBe('Soup, lentils, flatbread…')
+    await userEvent.type(input, 'bread')
+    await userEvent.click(screen.getByRole('button', { name: 'Clear filter' }))
+    expect(input.value).toBe('')
+    expect(document.activeElement).toBe(input)
+    expect(within(screen.getByRole('list', { name: 'Recipes' })).getAllByRole('link')).toHaveLength(2)
   })
 
   it('narrows the rail when typing in the filter', async () => {

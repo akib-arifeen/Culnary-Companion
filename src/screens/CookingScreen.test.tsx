@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 const fakes = vi.hoisted(() => ({
   speaking: false,
   voiceStatus: 'off',
+  voiceMessage: null as string | null,
   speak: vi.fn(),
   cancel: vi.fn(),
   onTranscript: null as null | ((transcript: string) => void),
@@ -20,7 +21,7 @@ vi.mock('../hooks/useSpeechSynthesis', () => ({
 vi.mock('../hooks/useSpeechCommands', () => ({
   useSpeechCommands: (opts: { onTranscript: (transcript: string) => void }) => {
     fakes.onTranscript = opts.onTranscript
-    return { status: fakes.voiceStatus, message: null, supported: true, listening: false, heard: null }
+    return { status: fakes.voiceStatus, message: fakes.voiceMessage, supported: true, listening: false, heard: null }
   },
 }))
 vi.mock('../hooks/useGestureRecognizer', () => ({
@@ -141,6 +142,7 @@ describe('CookingScreen', () => {
     fakes.cancel.mockClear()
     fakes.speaking = false
     fakes.voiceStatus = 'off'
+    fakes.voiceMessage = null
   })
   afterEach(() => {
     cleanup()
@@ -275,7 +277,7 @@ describe('CookingScreen', () => {
     const user = userEvent.setup()
     renderAt('/cooking/fixture-curry')
     await user.keyboard('t')
-    expect(screen.getByRole('tab', { name: /timers, 1 running/i })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: /^Timers\s*1\s*running$/ })).toBeTruthy()
     expect(fakes.speak).toHaveBeenCalledWith(expect.stringMatching(/^Timer set for/))
     await user.click(screen.getByRole('tab', { name: /timers/i }))
     expect(screen.getByRole('button', { name: /^Pause Step 1$/ })).toBeTruthy()
@@ -285,7 +287,7 @@ describe('CookingScreen', () => {
     renderAt('/cooking/fixture-curry')
     act(() => fakes.onTranscript?.('check garlic'))
     expect(fakes.speak).toHaveBeenCalledWith('Garlic checked.')
-    expect(screen.getByRole('tab', { name: new RegExp(`1 of ${ingredientCount} checked`) })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: new RegExp(`^Ingredients\\s*1/${ingredientCount}\\s*checked$`) })).toBeTruthy()
   })
 
   it('while speaking: the read button becomes "Stop reading" and the HEARD strip says the mic is paused', async () => {
@@ -403,6 +405,119 @@ describe('CookingScreen', () => {
     expect(screen.getByText(`Step 2 of ${stepCount}`)).toBeTruthy()
   })
 
+  it('lg layout: the HEARD strip (and nothing pinned) is outside the rail scroll container; timers and ingredients are inside', () => {
+    setLayout('lg')
+    renderAt('/cooking/fixture-curry')
+    const strip = screen.getByRole('status')
+    const scroller = document.querySelector('[data-rail-scroll]')!
+    expect(scroller).toBeTruthy()
+    expect(scroller.contains(strip)).toBe(false)
+    expect(scroller.contains(screen.getByRole('region', { name: 'Timers' }))).toBe(true)
+    expect(scroller.contains(screen.getByText(`0 of ${ingredientCount} checked`))).toBe(true)
+  })
+
+  it('tabs layout: the status is ONE compact line; a blocked mic becomes a short state plus a FIX button that opens the help sheet', async () => {
+    fakes.voiceStatus = 'denied'
+    fakes.voiceMessage = 'Microphone access was blocked. Allow the microphone in your browser’s site settings, then try again.'
+    writeJSON(PREF_KEYS.voice, true)
+    const user = userEvent.setup()
+    renderAt('/cooking/fixture-curry')
+    const strip = screen.getByRole('status')
+    expect(strip.getAttribute('data-compact')).toBe('true')
+    expect(strip.textContent).toContain('Mic blocked')
+    expect(strip.textContent).not.toContain('Allow the microphone')
+    expect(within(strip).queryByRole('button', { name: /try again/i })).toBeNull()
+    await user.click(within(strip).getByRole('button', { name: /fix/i }))
+    expect(screen.getByRole('dialog', { name: /hands-free/i })).toBeTruthy()
+    // The full sentence lives in the sheet, next to its Try again button.
+    expect(screen.getByText(/Allow the microphone/)).toBeTruthy()
+  })
+
+  it('md layout: the HEARD strip is the full status (not compact)', () => {
+    setLayout('md')
+    renderAt('/cooking/fixture-curry')
+    expect(screen.getByRole('status').getAttribute('data-compact')).toBeNull()
+  })
+
+  it('"THIS STEP USES" lists the ingredients of the current step and hides when there are none', async () => {
+    const user = userEvent.setup()
+    renderAt('/cooking/fixture-curry')
+    expect(screen.getByText('Onion · Garlic')).toBeTruthy()
+    expect(screen.getByText('This step uses')).toBeTruthy()
+    // Step 6 mentions only the rice ("Serve the curry over the rice.").
+    for (let i = 0; i < 5; i++) await user.click(screen.getByRole('button', { name: 'Next step' }))
+    expect(screen.getByText('Rice')).toBeTruthy()
+    // Fixture soup step 3, "Season and serve.", uses nothing.
+    await user.click(screen.getByRole('button', { name: 'go to /cooking/fixture-soup' }))
+    await user.keyboard('{ArrowRight}{ArrowRight}')
+    expect(screen.queryByText('This step uses')).toBeNull()
+  })
+
+  it('timers: presets show inline with no timers and collapse behind "+ Add timer" once one exists', async () => {
+    const user = userEvent.setup()
+    renderAt('/cooking/fixture-curry')
+    await user.click(screen.getByRole('tab', { name: /^Timers$/ }))
+    expect(screen.getByRole('button', { name: /^5\s*min\s*timer$/ })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /add timer/i })).toBeNull()
+    await user.click(screen.getByRole('button', { name: /^5\s*min\s*timer$/ }))
+    expect(screen.queryByRole('button', { name: /^5\s*min\s*timer$/ })).toBeNull()
+    const add = screen.getByRole('button', { name: /add timer/i })
+    expect(add.getAttribute('aria-expanded')).toBe('false')
+    await user.click(add)
+    expect(screen.getByRole('button', { name: /^10\s*min\s*timer$/ })).toBeTruthy()
+  })
+
+  it('lg layout: the running timer of the current step is not repeated in the rail (the step chip is its control)', async () => {
+    setLayout('lg')
+    const user = userEvent.setup()
+    renderAt('/cooking/fixture-curry')
+    await user.keyboard('{ArrowRight}')
+    await user.click(screen.getByRole('button', { name: 'Start 6-min timer' }))
+    expect(screen.getByRole('button', { name: /Pause step timer/ })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /^Pause Step 2$/ })).toBeNull()
+    // Moving on, that timer becomes an ordinary compact row in the rail.
+    await user.keyboard('{ArrowRight}')
+    expect(screen.getByRole('button', { name: /^Pause Step 2$/ })).toBeTruthy()
+  })
+
+  it('Reset on a compact timer row puts that timer back to its full time, paused', async () => {
+    setLayout('lg')
+    const user = userEvent.setup()
+    renderAt('/cooking/fixture-curry')
+    await user.click(screen.getByRole('button', { name: /^5\s*min\s*timer$/ }))
+    const row = screen.getByRole('timer').closest('li')!
+    expect(within(row).getByRole('button', { name: /^Pause 5 min timer$/ })).toBeTruthy()
+    await user.click(within(row).getByRole('button', { name: 'Reset 5 min timer' }))
+    expect(within(row).getByRole('timer').textContent).toBe('5:00')
+    // Reset leaves it paused, so the button now offers Resume.
+    expect(within(row).getByRole('button', { name: /^Resume 5 min timer$/ })).toBeTruthy()
+  })
+
+  it('the step chip offers Reset for the current step timer', async () => {
+    setLayout('lg')
+    const user = userEvent.setup()
+    renderAt('/cooking/fixture-curry')
+    await user.keyboard('{ArrowRight}')
+    await user.click(screen.getByRole('button', { name: 'Start 6-min timer' }))
+    await user.click(screen.getByRole('button', { name: 'Reset step timer' }))
+    expect(screen.getByRole('button', { name: /Resume step timer/ })).toBeTruthy()
+  })
+
+  it('onboarding: the voice test box says "Turn voice on first" until voice is on', () => {
+    window.localStorage.clear()
+    renderAt('/cooking/fixture-curry')
+    expect(screen.getByText('Turn voice on first')).toBeTruthy()
+    expect(screen.queryByText('Say “next” to test')).toBeNull()
+  })
+
+  it('onboarding: with voice on, the live test shows', () => {
+    window.localStorage.clear()
+    writeJSON(PREF_KEYS.voice, true)
+    renderAt('/cooking/fixture-curry')
+    expect(screen.getByText('Say “next” to test')).toBeTruthy()
+    expect(screen.queryByText('Turn voice on first')).toBeNull()
+  })
+
   it('md layout: ingredients and timers sit below the step, still without tabs', () => {
     setLayout('md')
     renderAt('/cooking/fixture-curry')
@@ -427,8 +542,8 @@ describe('CookingScreen', () => {
     await user.click(screen.getByRole('button', { name: 'Start 6-min timer' }))
     expect(fakes.speak).toHaveBeenCalledWith(expect.stringMatching(/^Timer set for/))
     expect(screen.queryByRole('button', { name: 'Start 6-min timer' })).toBeNull()
-    expect(screen.getByRole('button', { name: /^Pause step timer, / })).toBeTruthy()
-    await user.click(screen.getByRole('tab', { name: /timers, 1 running/i }))
+    expect(screen.getByRole('button', { name: /^6:00.*Pause step timer/ })).toBeTruthy()
+    await user.click(screen.getByRole('tab', { name: /^Timers\s*1\s*running$/ }))
     expect(screen.getByRole('button', { name: /^Pause Step 2$/ })).toBeTruthy()
   })
 

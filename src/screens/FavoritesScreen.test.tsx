@@ -22,7 +22,8 @@ describe('Saved and In progress', () => {
   it('Saved: designed empty state with one action to Recipes', () => {
     wrap(<FavoritesScreen />)
     expect(screen.getByRole('heading', { level: 1, name: 'Saved' })).toBeTruthy()
-    expect(screen.getByText('Nothing saved yet')).toBeTruthy()
+    expect(screen.getByText('Saved · 0')).toBeTruthy()
+    expect(screen.getByText('Tap SAVE RECIPE on any recipe to keep it here.')).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Browse recipes' }).getAttribute('href')).toBe('/')
   })
 
@@ -35,11 +36,13 @@ describe('Saved and In progress', () => {
 
   it('In progress: empty state, then a ticket with its step and a Resume link', () => {
     wrap(<RecentsScreen />)
-    expect(screen.getByText('Nothing in progress')).toBeTruthy()
+    expect(screen.getByText('In progress · 0')).toBeTruthy()
+    expect(screen.getByText('Recipes you start cooking appear here with the step you reached.')).toBeTruthy()
     cleanup()
     window.localStorage.setItem(PREF_KEYS.progress, JSON.stringify({ 'alpha-stew': 2 }))
     wrap(<RecentsScreen />)
     expect(screen.getByText('Step 3 of 3')).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Resume Alpha Stew' }).getAttribute('href')).toBe('/cooking/alpha-stew')
+    expect(screen.getByRole('button', { name: 'Discard progress on Alpha Stew' })).toBeTruthy()
   })
 })

@@ -17,11 +17,11 @@ describe('shortServes', () => {
 describe('shortTime', () => {
   it.each([
     ['15 minutes', '15 MIN'],
-    ['2 hours', '2 H'],
-    ['Prep: 15 minutes, Cooking: ~65 minutes', '~1 H 20 MIN'],
+    ['2 hours', '2 HR'],
+    ['Prep: 15 minutes, Cooking: ~65 minutes', '~1 HR 20 MIN'],
     ['Prep: 20 minutes, Cooking: 12 minutes, Total: 32 minutes', '32 MIN'],
     ['45-50 minutes', '50 MIN'],
-    ['1 hour 30 minutes', '1 H 30 MIN'],
+    ['1 hour 30 minutes', '1 HR 30 MIN'],
     ['overnight', null],
     [undefined, null],
   ])('%s -> %s', (input, out) => expect(shortTime(input)).toBe(out))

@@ -28,7 +28,7 @@ describe('RecipeOverviewScreen (Full ticket)', () => {
 
   it('shows the title once, as the only h1', () => {
     renderAt('/recipe/alpha-stew')
-    expect(screen.getAllByText('Alpha Stew')).toHaveLength(1)
+    expect(screen.getAllByRole('heading', { name: 'Alpha Stew' })).toHaveLength(1)
     expect(screen.getByRole('heading', { level: 1, name: 'Alpha Stew' })).toBeTruthy()
   })
 
@@ -75,6 +75,18 @@ describe('RecipeOverviewScreen (Full ticket)', () => {
   it('gives the photo alt text from the data', () => {
     renderAt('/recipe/alpha-stew')
     expect(screen.getByRole('img', { name: 'A bowl of chickpea stew' })).toBeTruthy()
+  })
+
+  it('puts the CTAs in a sticky stub (not beside the photo) and keeps Save in the flow', () => {
+    window.localStorage.setItem(PREF_KEYS.progress, JSON.stringify({ 'alpha-stew': 1 }))
+    renderAt('/recipe/alpha-stew')
+    const stub = screen.getByRole('region', { name: 'Cooking actions' })
+    expect(stub.className).toContain('fixed')
+    expect(within(stub).getByRole('link', { name: 'Resume at step 2' })).toBeTruthy()
+    expect(within(stub).getByRole('button', { name: 'Start over' })).toBeTruthy()
+    expect(within(stub).queryByRole('button', { name: 'Save recipe' })).toBeNull()
+    expect(screen.getAllByRole('link', { name: /start cooking|resume at/i })).toHaveLength(1)
+    expect(screen.getByRole('button', { name: 'Save recipe' })).toBeTruthy()
   })
 
   it('shows a Start cooking link when there is no progress, and no Start over', async () => {

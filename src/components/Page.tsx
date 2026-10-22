@@ -3,7 +3,7 @@ import AppHeader from './AppHeader'
 import BottomNav from './BottomNav'
 
 interface PageProps {
-  /** Extra bottom padding on phones for a sticky bar that sits above the bottom nav (the recipe CTA). */
+  /** Extra bottom padding for the recipe page's sticky stub bar, so the last content is never under it. */
   withActionBar?: boolean
   children: ReactNode
 }
@@ -21,7 +21,7 @@ export default function Page({ withActionBar = false, children }: PageProps) {
       <AppHeader />
       <main
         id="main"
-        className={`mx-auto w-full max-w-6xl grow px-4 pt-6 md:pt-10 ${withActionBar ? 'pb-40' : 'pb-24'} md:pb-16`}
+        className={`mx-auto w-full max-w-6xl grow px-4 pt-6 md:pt-10 ${withActionBar ? 'pb-44 md:pb-36' : 'pb-24 md:pb-16'}`}
       >
         {children}
       </main>

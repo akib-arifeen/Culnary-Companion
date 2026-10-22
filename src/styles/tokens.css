@@ -21,9 +21,9 @@
   --font-sans: "Atkinson Hyperlegible Next Variable", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Atkinson Hyperlegible Mono Variable", ui-monospace, monospace;
 
-  --text-step: clamp(1.75rem, min(0.75rem + 4.4vw, 9vh), 4.5rem);
+  --text-step: clamp(1.75rem, min(11cqi, 12cqb), 4.5rem);
   --text-step--line-height: 1.12;
-  --text-step-s: clamp(1.4rem, min(0.7rem + 3.2vw, 7vh), 3.25rem);
+  --text-step-s: clamp(1.4rem, min(8.5cqi, 9.5cqb), 3.25rem);
   --text-step-s--line-height: 1.15;
   --text-clock: clamp(2.75rem, 1.8rem + 4vw, 6rem);
   --text-clock--line-height: 1;

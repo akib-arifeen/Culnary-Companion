@@ -68,7 +68,7 @@ const RecipeOverviewScreen = () => {
               alt={photo.alt}
               width={photo.width}
               height={photo.height}
-              className="aspect-4/3 w-full rounded-ticket border border-rule object-cover"
+              className="aspect-4/3 w-full rounded-ticket border border-rule bg-paper-2 object-cover"
             />
             <figcaption className="mt-2 text-sm text-ink-2">
               Photo: {photo.author},{' '}
@@ -80,43 +80,16 @@ const RecipeOverviewScreen = () => {
           <div className="flex min-w-0 flex-col gap-4">
             <p className="max-w-prose text-xl text-ink">{recipe.summary}</p>
             {stated ? <p className="max-w-prose text-ink-2">{stated}</p> : null}
-            <div className="flex flex-col gap-3">
-              {/* Phone: sticky bar above the bottom nav. md and up: sits in the column. */}
-              <div className="fixed inset-x-0 bottom-14 z-30 border-t border-ink-2 bg-paper p-3 md:static md:z-auto md:border-0 md:bg-transparent md:p-0">
-                <ButtonLink
-                  to={cookingPath}
-                  size="lg"
-                  onClick={() => {
-                    if (resumeStep === undefined) setInProgress(recipe.id, 0)
-                  }}
-                  className="w-full whitespace-nowrap md:w-auto"
-                >
-                  {resumeStep === undefined ? 'Start cooking' : `Resume at step ${resumeStep + 1}`}
-                </ButtonLink>
-              </div>
-              <div className="flex flex-wrap gap-3">
-                <Button
-                  variant="secondary"
-                  aria-pressed={saved}
-                  onClick={() => toggleFavorite(recipe.id)}
-                  className={`whitespace-nowrap ${saved ? 'bg-ink! text-paper!' : ''}`}
-                >
-                  {saved ? <Check size={18} aria-hidden="true" /> : null}
-                  Save recipe
-                </Button>
-                {resumeStep !== undefined && (
-                  <Button
-                    variant="secondary"
-                    onClick={() => {
-                      setInProgress(recipe.id, 0)
-                      navigate(cookingPath)
-                    }}
-                    className="whitespace-nowrap"
-                  >
-                    Start over
-                  </Button>
-                )}
-              </div>
+            <div>
+              <Button
+                variant="secondary"
+                aria-pressed={saved}
+                onClick={() => toggleFavorite(recipe.id)}
+                className={`whitespace-nowrap ${saved ? 'bg-ink! text-paper!' : ''}`}
+              >
+                {saved ? <Check size={18} aria-hidden="true" /> : null}
+                Save recipe
+              </Button>
             </div>
           </div>
         </div>
@@ -180,6 +153,43 @@ const RecipeOverviewScreen = () => {
           {photo.licenseUrl ? <External href={photo.licenseUrl}>{photo.license}</External> : photo.license}, via{' '}
           <External href={photo.filePage}>Wikimedia Commons</External>.
         </p>
+      </section>
+
+      {/* Ticket stub: sticky at every width; above the phone bottom nav, flush to the edge from md. */}
+      <section
+        aria-label="Cooking actions"
+        className="fixed inset-x-0 bottom-14 z-30 border-t-2 border-dashed border-rule bg-paper md:bottom-0"
+      >
+        <div className="mx-auto flex w-full max-w-6xl items-center gap-3 px-4 py-3">
+          <p aria-hidden="true" className="hidden min-w-0 grow truncate text-ticket font-extrabold text-ink md:block">
+            {recipe.title}
+          </p>
+          <div className="flex grow items-center gap-3 md:grow-0">
+            {resumeStep !== undefined && (
+              <Button
+                variant="secondary"
+                size="lg"
+                onClick={() => {
+                  setInProgress(recipe.id, 0)
+                  navigate(cookingPath)
+                }}
+                className="order-first shrink-0 whitespace-nowrap px-4! sm:px-6!"
+              >
+                Start over
+              </Button>
+            )}
+            <ButtonLink
+              to={cookingPath}
+              size="lg"
+              onClick={() => {
+                if (resumeStep === undefined) setInProgress(recipe.id, 0)
+              }}
+              className="grow whitespace-nowrap px-4! sm:px-6! md:grow-0"
+            >
+              {resumeStep === undefined ? 'Start cooking' : `Resume at step ${resumeStep + 1}`}
+            </ButtonLink>
+          </div>
+        </div>
       </section>
     </Page>
   )

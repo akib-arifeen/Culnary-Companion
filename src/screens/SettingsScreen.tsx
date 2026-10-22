@@ -76,10 +76,11 @@ const SettingsScreen = () => {
 
   return (
     <Page>
+      <div className="mx-auto max-w-3xl">
       <h1 className="text-title font-extrabold tracking-tight text-ink">Settings</h1>
       <p className="mt-2 text-ink-2">Set up the station once; it remembers.</p>
 
-      <div className="mt-6 max-w-2xl space-y-6">
+      <div className="mt-6 space-y-6">
         <Group id="handsfree-settings" title="Hands-free">
           <ul className="divide-y divide-dashed divide-rule">
             <SwitchRow
@@ -115,7 +116,7 @@ const SettingsScreen = () => {
         </Group>
 
         <Group id="data-settings" title="Your data">
-          <div className="space-y-4 py-3">
+          <div className="flex flex-col items-start gap-4 py-3">
             <p className="max-w-prose text-ink-2">Saved recipes and cooking progress are stored only in this browser.</p>
             <div className="flex flex-wrap items-start gap-3">
             <Button
@@ -156,7 +157,7 @@ const SettingsScreen = () => {
                 </Button>
               )}
             </div>
-            <p role="status" className="flex min-h-6 items-center gap-2 font-bold text-ink">
+            <p role="status" className={status ? 'flex items-center gap-2 font-bold text-ink' : 'sr-only'}>
               {status ? <Check size={18} aria-hidden="true" /> : null}
               {status}
             </p>
@@ -205,6 +206,7 @@ const SettingsScreen = () => {
             </p>
           </div>
         </Group>
+      </div>
       </div>
     </Page>
   )

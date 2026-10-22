@@ -15,8 +15,8 @@ const FavoritesScreen = () => {
         {saved.length > 0 ? (
           <RecipeRail recipes={saved} label="Saved recipes" />
         ) : (
-          <EmptyState title="Nothing saved yet" actionLabel="Browse recipes">
-            Recipes you save are kept here, so tonight's dinner is one tap away next time.
+          <EmptyState strip="Saved · 0" actionLabel="Browse recipes">
+            Tap SAVE RECIPE on any recipe to keep it here.
           </EmptyState>
         )}
       </div>
