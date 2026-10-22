@@ -1,6 +1,6 @@
 import { act, cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter, Route, Routes } from 'react-router'
+import { MemoryRouter, Route, Routes, useNavigate } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 // The real media hooks need a camera, a microphone and a speech engine. The screen only depends on their
@@ -40,11 +40,22 @@ const recipe = getRecipeById('1')!
 const stepCount = recipe.steps.length
 const ingredientCount = recipe.ingredients.length
 
+function GoTo({ to }: { to: string }) {
+  const navigate = useNavigate()
+  return (
+    <button type="button" onClick={() => navigate(to)}>
+      go to {to}
+    </button>
+  )
+}
+
 function renderAt(path: string) {
   return render(
     <MemoryRouter initialEntries={[path]}>
       <RecipeProvider>
         <TimerProvider>
+          <GoTo to="/cooking/2" />
+          <GoTo to="/cooking/1" />
           <Routes>
             <Route path="/" element={<p>Home page</p>} />
             <Route path="/cooking/:id" element={<CookingScreen />} />
@@ -223,6 +234,36 @@ describe('CookingScreen', () => {
     renderAt('/cooking/1')
     await user.keyboard('?')
     expect(screen.getByText('Listening resumes when I finish speaking.')).toBeTruthy()
+  })
+
+  it('keeps step timers of different recipes apart and labels the other recipe', async () => {
+    const user = userEvent.setup()
+    renderAt('/cooking/1')
+    await user.keyboard('t')
+    await user.click(screen.getByRole('button', { name: 'go to /cooking/2' }))
+    await user.keyboard('t')
+    await user.click(screen.getByRole('tab', { name: /timers/i }))
+    expect(screen.getAllByRole('button', { name: /^Pause Step 1$/ })).toHaveLength(2)
+    expect(screen.getByText(recipe.title)).toBeTruthy()
+  })
+
+  it('a bare "start" with nothing paused creates no timer and says so', () => {
+    renderAt('/cooking/1')
+    act(() => fakes.onTranscript?.('start'))
+    expect(screen.getByRole('status').textContent).toContain('No paused timer')
+    expect(fakes.speak).toHaveBeenCalledWith(expect.stringContaining('No paused timer'))
+    expect(screen.getByRole('tab', { name: /^Timers$/ })).toBeTruthy()
+  })
+
+  it('ignores help (voice and keys) while the completion dialog is up', async () => {
+    const user = userEvent.setup()
+    renderAt('/cooking/1')
+    for (let i = 0; i < stepCount - 1; i++) await user.click(screen.getByRole('button', { name: 'Next step' }))
+    await user.click(screen.getByRole('button', { name: 'Finish recipe' }))
+    act(() => fakes.onTranscript?.('help'))
+    await user.keyboard('?')
+    expect(screen.getAllByRole('dialog')).toHaveLength(1)
+    expect(screen.getByRole('dialog', { name: /nicely done/i })).toBeTruthy()
   })
 
   it('shows a friendly page for an unknown recipe', () => {

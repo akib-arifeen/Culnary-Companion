@@ -136,7 +136,13 @@ export function useGestureRecognizer({ enabled, onGesture }: GestureRecognizerOp
         navigator.mediaDevices.getUserMedia({
           audio: false,
           video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 30, max: 30 } },
-        }))()
+        }))().then((acquired) => {
+        // Record it now so a stop during a slow model load can release it, and release immediately if
+        // this run was already stopped; otherwise the camera light stays on until the model settles.
+        stream = acquired
+        if (stopped) acquired.getTracks().forEach((track) => track.stop())
+        return acquired
+      })
       const [modelResult, cameraResult] = await Promise.allSettled([loadModel(), camera])
       if (cameraResult.status === 'fulfilled') stream = cameraResult.value
       if (stopped) {

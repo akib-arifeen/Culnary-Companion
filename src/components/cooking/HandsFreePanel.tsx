@@ -255,6 +255,9 @@ export default function HandsFreePanel({
                 </li>
               ))}
             </ul>
+            <p className="text-sm text-stone-600">
+              I stop listening while I read a step aloud — speak after I finish, or tap Stop reading.
+            </p>
           </section>
 
           <section aria-labelledby={`${titleId}-speech`} className="space-y-3">

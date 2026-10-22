@@ -177,6 +177,54 @@ describe('useGestureRecognizer', () => {
     await waitFor(() => expect(result.current.status).toBe('on'))
   })
 
+  describe('releasing the camera while the model is still loading', () => {
+    async function coldHook() {
+      vi.resetModules() // the model is a module-level singleton; start from a cold page
+      const { useGestureRecognizer: freshHook } = await import('./useGestureRecognizer')
+      // the model promise is never settled during the test
+      mocks.createFromOptions.mockReturnValue(new Promise(() => {}))
+      return freshHook
+    }
+
+    it('camera resolves first, then disable: tracks are stopped before the model settles', async () => {
+      const freshHook = await coldHook()
+      const { track } = fakeStream()
+      const second = { stop: vi.fn() }
+      const twoTracks = { getTracks: () => [track, second] } as unknown as MediaStream
+      getUserMedia.mockResolvedValue(twoTracks)
+      const { result, rerender } = renderHook(({ enabled }) => freshHook({ enabled, onGesture: vi.fn() }), {
+        initialProps: { enabled: true },
+      })
+      await act(async () => {})
+      expect(getUserMedia).toHaveBeenCalledTimes(1)
+      expect(track.stop).not.toHaveBeenCalled()
+      expect(result.current.status).toBe('starting')
+      rerender({ enabled: false })
+      await act(async () => {})
+      expect(track.stop).toHaveBeenCalled()
+      expect(second.stop).toHaveBeenCalled()
+      expect(result.current.status).toBe('off')
+      expect(getUserMedia).toHaveBeenCalledTimes(1)
+    })
+
+    it('disable first, then the camera resolves: tracks are stopped right away', async () => {
+      const freshHook = await coldHook()
+      const { stream, track } = fakeStream()
+      let resolveCamera: (s: MediaStream) => void = () => {}
+      getUserMedia.mockReturnValue(new Promise<MediaStream>((r) => (resolveCamera = r)))
+      const { result, rerender } = renderHook(({ enabled }) => freshHook({ enabled, onGesture: vi.fn() }), {
+        initialProps: { enabled: true },
+      })
+      await act(async () => {})
+      rerender({ enabled: false })
+      expect(track.stop).not.toHaveBeenCalled()
+      await act(async () => resolveCamera(stream))
+      expect(track.stop).toHaveBeenCalled()
+      expect(result.current.status).toBe('off')
+      expect(getUserMedia).toHaveBeenCalledTimes(1)
+    })
+  })
+
   describe('silenceMediaPipeLogs', () => {
     const methods = ['log', 'info', 'warn', 'error'] as const
     const saved = Object.fromEntries(methods.map((m) => [m, console[m]])) as Record<(typeof methods)[number], (...a: unknown[]) => void>

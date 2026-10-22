@@ -45,6 +45,24 @@ describe('createTimer', () => {
     expect(make({ stepNumber: 3 }).stepNumber).toBe(3)
     expect(make({ minutes: 0.5 }).durationMs).toBe(30_000)
   })
+
+  it('copies recipeId when given', () => {
+    expect(make({ recipeId: 'r1' }).recipeId).toBe('r1')
+    expect(make({ recipeId: 'r1', stepNumber: 2 })).toMatchObject({ recipeId: 'r1', stepNumber: 2 })
+  })
+
+  it('omits the recipeId key when not given', () => {
+    expect('recipeId' in make()).toBe(false)
+    expect(Object.keys(make())).not.toContain('recipeId')
+  })
+
+  it('recipeId survives pause, resume, reset and settle', () => {
+    const t = make({ recipeId: 'r1' })
+    expect(pauseTimer(t, T0 + 1000).recipeId).toBe('r1')
+    expect(resumeTimer(pauseTimer(t, T0 + 1000), T0 + 2000).recipeId).toBe('r1')
+    expect(resetTimer(t).recipeId).toBe('r1')
+    expect(settleTimer(t, T0 + 5 * MIN).recipeId).toBe('r1')
+  })
 })
 
 describe('timeLeft', () => {

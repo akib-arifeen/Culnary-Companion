@@ -12,7 +12,7 @@ import IngredientsView from '../components/cooking/IngredientsView'
 import StepView from '../components/cooking/StepView'
 import TimersView from '../components/cooking/TimersView'
 import { PIP_RESERVE, pipMode } from '../components/cooking/pipMode'
-import { cancelTarget, latestPaused, runningSoonest, toggleTarget } from '../components/cooking/timerTargets'
+import { cancelTarget, latestPaused, resetTarget, runningSoonest, toggleTarget } from '../components/cooking/timerTargets'
 import { BTN_PRIMARY } from '../components/cooking/ui'
 import { useRecipeContext } from '../context/RecipeContext'
 import { useTimers } from '../context/TimerContext'
@@ -59,7 +59,7 @@ interface Latest {
   onTimerDone: (timer: KitchenTimer) => void
 }
 
-const FINISHED_OK = new Set<Command['type']>(['previous', 'goToStep', 'help', 'stopSpeaking'])
+const FINISHED_OK = new Set<Command['type']>(['previous', 'goToStep', 'stopSpeaking'])
 const GESTURE_IN_GUIDE = new Set<GestureName>(GESTURE_GUIDE.map((g) => g.gesture))
 
 function readInIframe(): boolean {
@@ -132,7 +132,7 @@ function CookingSession({ recipe }: { recipe: Recipe }) {
     const number = state.stepIndex + 1
     const minutes = minutesArg ?? recipe.steps[state.stepIndex].duration ?? 5
     const id = timers.start(
-      minutesArg === undefined ? { label: `Step ${number}`, minutes, stepNumber: number } : { label: `${minutes} min timer`, minutes },
+      minutesArg === undefined ? { label: `Step ${number}`, minutes, stepNumber: number, recipeId: recipe.id } : { label: `${minutes} min timer`, minutes },
     )
     speak(id === '' ? 'I couldn’t set that timer.' : `Timer set for ${formatSpokenDuration(minutes * 60_000)}.`)
   }
@@ -191,9 +191,13 @@ function CookingSession({ recipe }: { recipe: Recipe }) {
         startTimer(command.minutes)
         break
       case 'resumeTimer': {
-        const target = latestPaused(timers.timers)
+        const target = latestPaused(timers.timers, recipe.id)
         if (target) timers.resume(target.id)
-        else startTimer()
+        else {
+          const text = 'No paused timer. Say “start timer” to time this step.'
+          speak(text)
+          notify('info', text)
+        }
         break
       }
       case 'pauseTimer':
@@ -201,10 +205,10 @@ function CookingSession({ recipe }: { recipe: Recipe }) {
       case 'resetTimer': {
         const target =
           command.type === 'pauseTimer'
-            ? runningSoonest(timers.timers, timers.now)
+            ? runningSoonest(timers.timers, timers.now, recipe.id)
             : command.type === 'toggleTimer'
-              ? toggleTarget(timers.timers, timers.now)
-              : timers.timers[timers.timers.length - 1]
+              ? toggleTarget(timers.timers, timers.now, recipe.id)
+              : resetTarget(timers.timers, recipe.id)
         if (!target) speak('No timer running.')
         else if (command.type === 'pauseTimer') timers.pause(target.id)
         else if (command.type === 'toggleTimer') timers.toggle(target.id)
@@ -212,7 +216,7 @@ function CookingSession({ recipe }: { recipe: Recipe }) {
         break
       }
       case 'cancelTimer': {
-        const target = cancelTarget(timers.timers, timers.now)
+        const target = cancelTarget(timers.timers, timers.now, recipe.id)
         if (target) {
           timers.remove(target.id)
           speak('Timer cancelled.')
@@ -327,17 +331,32 @@ function CookingSession({ recipe }: { recipe: Recipe }) {
   const step = recipe.steps[state.stepIndex]
   const nextStep = recipe.steps[state.stepIndex + 1]
   const stepNumber = state.stepIndex + 1
-  const stepTimer = timers.timers.find((t) => t.stepNumber === stepNumber)
+  const stepTimer = timers.timers.find((t) => t.recipeId === recipe.id && t.stepNumber === stepNumber)
   const runningCount = timers.timers.filter(isRunning).length
 
   const voiceProblem = voicePref && isFailed(voice.status)
   const mode = pipMode({ gesturesOn: gesturesPref, previewPref: cameraPreview, gesturesStatus: gestures.status, voiceProblem })
   const problemText = gesturesPref && isFailed(gestures.status) ? 'Gestures need attention' : 'Voice needs attention'
 
-  const retry = (set: (value: boolean) => void) => {
-    set(false)
-    window.setTimeout(() => set(true), 150)
+  // "Try again" = off, then on again shortly after. The pending "on" must never outlive the screen or a manual toggle,
+  // or the camera / microphone would start later without a click.
+  const retryTimers = useRef<Record<'gestures' | 'voice', number | undefined>>({ gestures: undefined, voice: undefined })
+  const cancelRetry = (which: 'gestures' | 'voice') => {
+    window.clearTimeout(retryTimers.current[which])
+    retryTimers.current[which] = undefined
   }
+  const retry = (which: 'gestures' | 'voice', set: (value: boolean) => void) => {
+    cancelRetry(which)
+    set(false)
+    retryTimers.current[which] = window.setTimeout(() => set(true), 150)
+  }
+  useEffect(() => {
+    const pending = retryTimers.current
+    return () => {
+      window.clearTimeout(pending.gestures)
+      window.clearTimeout(pending.voice)
+    }
+  }, [])
 
   return (
     <>
@@ -378,6 +397,7 @@ function CookingSession({ recipe }: { recipe: Recipe }) {
             ) : (
               <TimersView
                 timers={timers.timers}
+              recipeId={recipe.id}
                 now={timers.now}
                 stepDuration={step.duration}
                 onStartPreset={startTimer}
@@ -431,16 +451,22 @@ function CookingSession({ recipe }: { recipe: Recipe }) {
           firstTime={!onboarded}
           onClose={closePanel}
           gesturesOn={gesturesPref}
-          onToggleGestures={() => setGesturesPref(!gesturesPref)}
-          onRetryGestures={() => retry(setGesturesPref)}
+          onToggleGestures={() => {
+            cancelRetry('gestures')
+            setGesturesPref(!gesturesPref)
+          }}
+          onRetryGestures={() => retry('gestures', setGesturesPref)}
           gesturesStatus={gestures.status}
           gesturesMessage={gestures.message}
           live={gestures.live}
           videoRef={gestures.videoRef}
           learned={learned}
           voiceOn={voicePref}
-          onToggleVoice={() => setVoicePref(!voicePref)}
-          onRetryVoice={() => retry(setVoicePref)}
+          onToggleVoice={() => {
+            cancelRetry('voice')
+            setVoicePref(!voicePref)
+          }}
+          onRetryVoice={() => retry('voice', setVoicePref)}
           voice={voice}
           speaking={speech.speaking}
           speakSteps={speakSteps}

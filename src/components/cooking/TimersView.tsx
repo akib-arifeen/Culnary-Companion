@@ -1,3 +1,4 @@
+import { getRecipeById } from '../../data/recipes'
 import { Pause, Play, RotateCcw, Timer as TimerIcon, Trash2 } from 'lucide-react'
 import { formatClock, isRunning, timeLeft, type KitchenTimer } from '../../lib/timers'
 import { BTN_PRIMARY, BTN_SECONDARY, CARD } from './ui'
@@ -7,6 +8,8 @@ const PRESETS = [1, 3, 5, 10, 15, 30] as const
 interface TimersViewProps {
   timers: readonly KitchenTimer[]
   now: number
+  /** Timers of other recipes get that recipe's title as a subtitle. */
+  recipeId: string
   /** The current step's suggested minutes, if it has one. */
   stepDuration?: number
   onStartPreset: (minutes: number) => void
@@ -19,12 +22,14 @@ interface TimersViewProps {
 function TimerCard({
   timer,
   now,
+  recipeId,
   onToggle,
   onReset,
   onRemove,
 }: {
   timer: KitchenTimer
   now: number
+  recipeId: string
   onToggle: (id: string) => void
   onReset: (id: string) => void
   onRemove: (id: string) => void
@@ -32,10 +37,14 @@ function TimerCard({
   const left = timeLeft(timer, now)
   const running = isRunning(timer)
   const fraction = timer.durationMs > 0 ? left / timer.durationMs : 0
+  const otherRecipe = timer.recipeId && timer.recipeId !== recipeId ? getRecipeById(timer.recipeId)?.title : undefined
   const iconButton = `${BTN_SECONDARY} size-11 shrink-0`
   return (
     <li className={`${CARD} flex flex-col gap-2 p-4 ${timer.done ? 'ring-rose-300' : ''}`}>
-      <p className="truncate text-base font-medium text-stone-700">{timer.label}</p>
+      <div className="min-w-0">
+        <p className="truncate text-base font-medium text-stone-700">{timer.label}</p>
+        {otherRecipe ? <p className="truncate text-sm text-stone-600">{otherRecipe}</p> : null}
+      </div>
       {timer.done ? (
         <p role="timer" className="text-4xl font-semibold text-rose-700 short:text-3xl">
           Time’s up
@@ -80,6 +89,7 @@ function TimerCard({
 export default function TimersView({
   timers,
   now,
+  recipeId,
   stepDuration,
   onStartPreset,
   onStartStepTimer,
@@ -123,7 +133,7 @@ export default function TimersView({
           <>
             <ul className="grid gap-3 sm:grid-cols-2">
               {timers.map((timer) => (
-                <TimerCard key={timer.id} timer={timer} now={now} onToggle={onToggle} onReset={onReset} onRemove={onRemove} />
+                <TimerCard key={timer.id} timer={timer} now={now} recipeId={recipeId} onToggle={onToggle} onReset={onReset} onRemove={onRemove} />
               ))}
             </ul>
             <div className="mt-5">

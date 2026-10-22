@@ -15,6 +15,8 @@ export interface KitchenTimer {
   readonly done: boolean
   /** 1-based recipe step this timer belongs to, if any. */
   readonly stepNumber?: number
+  /** Recipe this timer belongs to, if any. Timers are app-wide, so (recipeId, stepNumber) identifies a step timer. */
+  readonly recipeId?: string
 }
 
 /** minutes must be > 0. autoStart defaults to true. */
@@ -24,6 +26,7 @@ export function createTimer(opts: {
   minutes: number
   now: number
   stepNumber?: number
+  recipeId?: string
   autoStart?: boolean
 }): KitchenTimer {
   const durationMs = opts.minutes * 60_000
@@ -36,6 +39,7 @@ export function createTimer(opts: {
     pausedRemainingMs: running ? 0 : durationMs,
     done: false,
     ...(opts.stepNumber !== undefined ? { stepNumber: opts.stepNumber } : {}),
+    ...(opts.recipeId !== undefined ? { recipeId: opts.recipeId } : {}),
   }
 }
 

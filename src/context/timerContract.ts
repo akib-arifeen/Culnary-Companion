@@ -10,10 +10,11 @@ export interface TimersApi {
   /** Epoch ms; re-rendered ~4x/s only while at least one timer is running. */
   now: number
   /**
-   * Creates and starts a timer; returns its id. If a timer with the same stepNumber already
-   * exists it is replaced (one timer per step). minutes must be 1..180, else no-op returning ''.
+   * Creates and starts a timer; returns its id. If a timer with the same recipeId AND stepNumber
+   * already exists it is replaced (one timer per recipe step). Timers of other recipes, and timers
+   * without a stepNumber, are never replaced. minutes must be 1..180, else no-op returning ''.
    */
-  start: (opts: { label: string; minutes: number; stepNumber?: number }) => string
+  start: (opts: { label: string; minutes: number; stepNumber?: number; recipeId?: string }) => string
   pause: (id: string) => void
   resume: (id: string) => void
   toggle: (id: string) => void

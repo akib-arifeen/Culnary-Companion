@@ -69,15 +69,15 @@ export function TimerProvider({ children }: { children: ReactNode }) {
   }, [tick])
 
   const start = useCallback<TimersApi['start']>(
-    ({ label, minutes, stepNumber }) => {
+    ({ label, minutes, stepNumber, recipeId }) => {
       if (!Number.isFinite(minutes) || Math.abs(minutes - Math.round(minutes)) > 1e-9) return ''
       const whole = Math.round(minutes)
       if (whole < 1 || whole > 180) return ''
       const t = Date.now()
       settleAll(t)
       const id = newId()
-      const timer = createTimer({ id, label, minutes: whole, now: t, stepNumber, autoStart: true })
-      const kept = stepNumber === undefined ? timersRef.current : timersRef.current.filter((x) => x.stepNumber !== stepNumber)
+      const timer = createTimer({ id, label, minutes: whole, now: t, stepNumber, recipeId, autoStart: true })
+      const kept = stepNumber === undefined ? timersRef.current : timersRef.current.filter((x) => !(x.stepNumber === stepNumber && x.recipeId === recipeId))
       commit([...kept, timer])
       setNow(t)
       return id

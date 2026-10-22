@@ -1,4 +1,5 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router'
+import { useEffect } from 'react'
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router'
 import { RecipeProvider } from './context/RecipeContext'
 import { TimerProvider } from './context/TimerContext'
 import HomeScreen from './screens/HomeScreen'
@@ -10,11 +11,21 @@ import SearchScreen from './screens/SearchScreen'
 import RecentsScreen from './screens/RecentsScreen'
 import TimerDoneBanner from './components/TimerDoneBanner'
 
+/** BrowserRouter keeps the old scroll offset; without this a recipe opened from low in the grid starts mid-page. */
+function ScrollToTop() {
+  const { pathname } = useLocation()
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [pathname])
+  return null
+}
+
 function App() {
   return (
     <RecipeProvider>
       <TimerProvider>
         <Router>
+          <ScrollToTop />
           <TimerDoneBanner />
           <Routes>
             <Route path="/" element={<HomeScreen />} />

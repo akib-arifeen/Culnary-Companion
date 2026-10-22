@@ -6,14 +6,20 @@ A hands-free recipe app: step through a recipe with hand gestures or your voice 
 
 ## Screenshots
 
-<!-- Screenshots go here. -->
+![Cooking mode on desktop: a held victory gesture in the camera corner has just opened the ingredients list](docs/screenshots/gesture-control.png)
+
+| Learn the gestures on first visit | Voice-started timers |
+| --- | --- |
+| ![Onboarding panel on a phone with the live camera preview and gesture practice](docs/screenshots/onboarding-practice-phone.png) | ![Two kitchen timers started by voice, with the heard phrase shown in the header](docs/screenshots/voice-timers.png) |
+
+Screenshots are from automated browser runs, where the "camera" is a looped video of hand photos.
 
 ## What it does
 
 - Eight cookable recipes with photos, ingredient lists and timed steps.
 - A cooking mode that shows one step at a time, large and readable from across the kitchen.
 - Control it by tapping, with the keyboard, by voice, or with hand gestures. Every method triggers the same commands.
-- Kitchen timers that keep running when you leave the cooking screen and chime and announce when they finish.
+- Kitchen timers that keep running when you leave the cooking screen. They chime when they finish, and the cooking screen also announces them aloud.
 - Saved recipes and per-recipe progress, kept in your browser.
 - A short hands-free tutorial with live gesture practice, and a help sheet you can open at any time.
 
@@ -54,7 +60,7 @@ Say the phrase on its own, or with filler such as "okay" or "please".
 
 Matching is by whole words, so "background" never triggers "back".
 
-The grammar only accepts command-shaped phrases, so everyday kitchen talk such as "put the lid back on" is ignored.
+The grammar only accepts command-shaped phrases, so longer kitchen chatter such as "put the lid back on" or "I'll be right back" is ignored. Short command words said on their own (next, back, stop, again, pause) are always treated as commands.
 
 The microphone pauses while the app is speaking, so it never hears itself. Speak after the read-out finishes, or tap Stop reading.
 
@@ -86,6 +92,8 @@ Gesture recognition runs in your browser and camera video never leaves your devi
 | Hand gestures | Modern Chrome, Edge, Firefox and Safari with WebAssembly and a camera |
 | Voice commands | Chrome, Edge and Safari (not Firefox) |
 | Read aloud | All major browsers |
+
+Tested in Chromium on desktop, including a cross-origin iframe. The other browsers listed support the same web APIs but haven't been checked on real devices yet.
 
 ## Embedding
 
@@ -121,11 +129,11 @@ Without the `allow` attribute the browser blocks the camera and microphone, and 
    step reducer      timers        speech out
 ```
 
-Every input becomes a `Command`, and the cooking screen handles commands in exactly one place, so a new input method only needs a translator. A gesture must be held steadily before it fires (the stabilizer), which stops accidental triggers from a hand passing through the frame. The MediaPipe gesture model and its WebAssembly runtime are self-hosted and lazy-loaded, so nothing is downloaded until you turn gestures on.
+Every input becomes a `Command`, and the cooking screen handles commands in exactly one place, so a new input method only needs a translator. A gesture must be held steadily before it fires (the stabilizer), which stops accidental triggers from a hand passing through the frame. The MediaPipe gesture model and its WebAssembly runtime are self-hosted and lazy-loaded, so nothing is downloaded until you turn gestures on. MediaPipe's WebAssembly runtime prints its own native diagnostic lines to the console; the app filters exactly those lines, so real errors still show up.
 
 ### Testing
 
-There are 820 automated tests (`npm test`). The logic tests were written from the interface by a separate author, and the suite was hardened with mutation testing (a test was added for each mutant that survived). On top of that, browser probes ran in Chromium with fake camera and microphone devices. They covered real MediaPipe recognition of all six gestures from photos, voice through a stand-in for the browser speech service, the permission-denied UI, and a cross-origin iframe with and without camera and microphone permission.
+There are over 800 automated tests (`npm test`) covering the voice grammar, the gesture stabilizer, timers, the media hooks and the screens. The core logic was also mutation-tested: deliberately planted bugs were run against the suite, and tests were added for the ones it missed. On top of that, browser probes ran in Chromium with fake camera and microphone devices. They covered real MediaPipe recognition of all six gestures from photos, voice through a stand-in for the browser speech service, the permission-denied UI, and a cross-origin iframe with and without camera and microphone permission.
 
 ## Tech stack
 

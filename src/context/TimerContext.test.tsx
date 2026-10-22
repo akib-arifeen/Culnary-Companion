@@ -82,6 +82,63 @@ describe('TimerContext', () => {
     expect(result.current.timers.map((t) => t.label)).toEqual(['other', 'two'])
   })
 
+  describe('replacement is keyed by (recipeId, stepNumber)', () => {
+    const startAll = (specs: Array<{ label: string; stepNumber?: number; recipeId?: string }>) => {
+      const { result } = renderHook(() => useTimers(), { wrapper })
+      for (const spec of specs) act(() => void result.current.start({ minutes: 5, ...spec }))
+      return result
+    }
+
+    it('same stepNumber in different recipes: both exist', () => {
+      const r = startAll([
+        { label: 'a', stepNumber: 3, recipeId: 'a' },
+        { label: 'b', stepNumber: 3, recipeId: 'b' },
+      ])
+      expect(r.current.timers.map((t) => t.label)).toEqual(['a', 'b'])
+    })
+
+    it('same recipe and step twice: exactly one, the newer one', () => {
+      const r = startAll([
+        { label: 'old', stepNumber: 3, recipeId: 'a' },
+        { label: 'new', stepNumber: 3, recipeId: 'a' },
+      ])
+      expect(r.current.timers.map((t) => t.label)).toEqual(['new'])
+      expect(r.current.timers[0].recipeId).toBe('a')
+    })
+
+    it('same recipe, different steps: both exist', () => {
+      const r = startAll([
+        { label: 's3', stepNumber: 3, recipeId: 'a' },
+        { label: 's4', stepNumber: 4, recipeId: 'a' },
+      ])
+      expect(r.current.timers).toHaveLength(2)
+    })
+
+    it('timers without a stepNumber are never replaced', () => {
+      const r = startAll([{ label: 'x1' }, { label: 'x2' }, { label: 'y1', recipeId: 'a' }, { label: 'y2', recipeId: 'a' }])
+      expect(r.current.timers.map((t) => t.label)).toEqual(['x1', 'x2', 'y1', 'y2'])
+    })
+
+    it('a stepless timer is not replaced by a step timer, nor the reverse', () => {
+      const r = startAll([
+        { label: 'free', recipeId: 'a' },
+        { label: 'step', stepNumber: 3, recipeId: 'a' },
+        { label: 'free2', recipeId: 'a' },
+      ])
+      expect(r.current.timers.map((t) => t.label)).toEqual(['free', 'step', 'free2'])
+    })
+
+    it('recipeId-less and recipeId\'d timers with the same stepNumber are different (undefined vs "a")', () => {
+      const r = startAll([
+        { label: 'none', stepNumber: 3 },
+        { label: 'a', stepNumber: 3, recipeId: 'a' },
+      ])
+      expect(r.current.timers.map((t) => t.label)).toEqual(['none', 'a'])
+      act(() => void r.current.start({ label: 'none2', minutes: 5, stepNumber: 3 }))
+      expect(r.current.timers.map((t) => t.label)).toEqual(['a', 'none2'])
+    })
+  })
+
   it('rejects minutes outside 1..180', () => {
     const { result } = renderHook(() => useTimers(), { wrapper })
     let ids: string[] = []
