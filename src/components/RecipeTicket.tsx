@@ -59,10 +59,10 @@ export default function RecipeTicket({ recipe, note }: RecipeTicketProps) {
         </div>
         <Label
           as="p"
-          className="flex min-w-0 gap-1 whitespace-nowrap normal-case! tracking-normal!"
+          className="flex min-w-0 flex-wrap gap-x-1 normal-case! tracking-normal!"
         >
           <span className="shrink-0">Photo:</span>
-          <span className="min-w-0 truncate" title={recipe.photo.author}>
+          <span className="min-w-0 break-words" title={recipe.photo.author}>
             {recipe.photo.author}
           </span>
           <span className="shrink-0">· {recipe.photo.license}</span>
