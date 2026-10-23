@@ -8,7 +8,9 @@ import SettingsScreen from './screens/SettingsScreen'
 import FavoritesScreen from './screens/FavoritesScreen'
 import SearchScreen from './screens/SearchScreen'
 import RecentsScreen from './screens/RecentsScreen'
+import NotFoundScreen from './screens/NotFoundScreen'
 import TimerDoneBanner from './components/TimerDoneBanner'
+import { Wordmark } from './components/ui/primitives'
 
 // Cooking mode (media hooks, timers UI, onboarding) is its own chunk, so browsing doesn't download it.
 const CookingScreen = lazy(() => import('./screens/CookingScreen'))
@@ -20,6 +22,18 @@ function ScrollToTop() {
     window.scrollTo(0, 0)
   }, [pathname])
   return null
+}
+
+/** The chunk is small and local, but a blank screen reads as broken. Say what is happening. */
+function CookingLoading() {
+  return (
+    <div className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-paper-2 px-6 text-center">
+      <Wordmark />
+      <p role="status" className="label-mono text-ink-2">
+        Setting the pass…
+      </p>
+    </div>
+  )
 }
 
 function App() {
@@ -35,7 +49,7 @@ function App() {
             <Route
               path="/cooking/:id"
               element={
-                <Suspense fallback={<div className="min-h-dvh bg-paper-2" aria-busy="true" />}>
+                <Suspense fallback={<CookingLoading />}>
                   <CookingScreen />
                 </Suspense>
               }
@@ -44,6 +58,7 @@ function App() {
             <Route path="/favorites" element={<FavoritesScreen />} />
             <Route path="/search" element={<SearchScreen />} />
             <Route path="/recents" element={<RecentsScreen />} />
+            <Route path="*" element={<NotFoundScreen />} />
           </Routes>
         </Router>
       </TimerProvider>

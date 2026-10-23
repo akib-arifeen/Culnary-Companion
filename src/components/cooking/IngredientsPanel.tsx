@@ -36,16 +36,18 @@ export default function IngredientsPanel({ ingredients, checked, usedNow, onTogg
                 className={`flex min-h-14 cursor-pointer items-center gap-3 rounded-(--radius-control) px-2 py-1.5 ${thisStep ? 'bg-accent-soft' : 'hover:bg-paper-2'}`}
               >
                 <input type="checkbox" checked={isChecked} onChange={() => onToggle(index)} className="size-7 shrink-0 cursor-pointer accent-ink" />
-                <span className="min-w-0 flex-1">
-                  <span className={`block text-lg font-bold ${isChecked ? 'text-ink-2 line-through' : 'text-ink'}`}>
-                    {ingredient.name}
+                <span className="flex min-w-0 flex-1 flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+                  <span className="min-w-0 flex-1 basis-28">
+                    <span className={`block text-lg font-bold ${isChecked ? 'text-ink-2 line-through' : 'text-ink'}`}>
+                      {ingredient.name}
+                    </span>
+                    {ingredient.note ? <span className="line-clamp-2 text-sm text-ink-2">{ingredient.note}</span> : null}
+                    {thisStep ? <Label className="block text-ink!">This step</Label> : null}
                   </span>
-                  {ingredient.note ? <span className="line-clamp-2 text-sm text-ink-2">{ingredient.note}</span> : null}
-                  {thisStep ? <Label className="block text-ink!">This step</Label> : null}
+                  {ingredient.quantity ? (
+                    <span className={`ml-auto shrink-0 text-right font-mono text-base font-semibold ${isChecked ? 'text-ink-2 line-through' : 'text-ink'}`}>{ingredient.quantity}</span>
+                  ) : null}
                 </span>
-                {ingredient.quantity ? (
-                  <span className={`shrink-0 font-mono text-base font-semibold ${isChecked ? 'text-ink-2 line-through' : 'text-ink'}`}>{ingredient.quantity}</span>
-                ) : null}
               </label>
             </li>
           )

@@ -19,8 +19,8 @@ export default function TopBar({
   onOpenHelp: () => void
 }) {
   return (
-    <div className="shrink-0 border-b border-rule bg-paper">
-      <header className="flex h-14 items-center gap-1 px-1 sm:px-3">
+    <header className="shrink-0 border-b border-rule bg-paper">
+      <div className="flex h-14 items-center gap-1 px-1 sm:px-3">
         <Link to={`/recipe/${recipeId}`} aria-label="Back to recipe" className={ICON_BUTTON}>
           <ChevronLeft className="size-7" strokeWidth={2} aria-hidden="true" />
         </Link>
@@ -28,9 +28,9 @@ export default function TopBar({
         <button type="button" onClick={onOpenHelp} aria-label="Help and hands-free setup" className={ICON_BUTTON}>
           <CircleHelp className="size-7" strokeWidth={2} aria-hidden="true" />
         </button>
-      </header>
+      </div>
       <StepProgress stepIndex={stepIndex} stepCount={stepCount} />
-    </div>
+    </header>
   )
 }
 

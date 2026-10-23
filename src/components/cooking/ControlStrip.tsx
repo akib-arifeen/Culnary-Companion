@@ -15,7 +15,7 @@ interface ControlStripProps {
 /** Bottom strip: Back · Read it again / Stop reading · NEXT STEP at the right edge. Every target is 56 px or more. */
 export default function ControlStrip({ isFirst, isLast, speaking, onStopReading, onBack, onRead, onNext }: ControlStripProps) {
   return (
-    <div className="flex shrink-0 items-center gap-2 border-t border-rule bg-paper px-3 py-1.5 sm:gap-3 sm:px-5 sm:py-2 short:py-1.5">
+    <footer className="flex shrink-0 items-center gap-2 border-t border-rule bg-paper px-3 py-1.5 sm:gap-3 sm:px-5 sm:py-2 short:py-1.5">
       <Button variant="secondary" size="lg" onClick={onBack} aria-disabled={isFirst} aria-label="Back to previous step" className="px-4! sm:px-6!">
         <ChevronLeft className="size-6" strokeWidth={2} aria-hidden="true" />
         <span className="max-sm:sr-only">Back</span>
@@ -37,6 +37,6 @@ export default function ControlStrip({ isFirst, isLast, speaking, onStopReading,
           </>
         )}
       </Button>
-    </div>
+    </footer>
   )
 }

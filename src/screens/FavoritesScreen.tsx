@@ -11,12 +11,13 @@ const FavoritesScreen = () => {
   return (
     <Page>
       <h1 className="text-title font-extrabold tracking-tight text-ink">Saved</h1>
+      <p className="mt-2 max-w-prose text-ink-2">The recipes you want within reach next time you cook.</p>
       <div className="mt-6">
         {saved.length > 0 ? (
           <RecipeRail recipes={saved} label="Saved recipes" />
         ) : (
-          <EmptyState strip="Saved · 0" actionLabel="Browse recipes">
-            Tap SAVE RECIPE on any recipe to keep it here.
+          <EmptyState strip="Saved" title="Nothing saved yet" actionLabel="Browse recipes">
+            Open a recipe and tap Save recipe; it waits here, one tap from the kitchen.
           </EmptyState>
         )}
       </div>

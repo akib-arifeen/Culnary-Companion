@@ -211,7 +211,7 @@ describe('CookingScreen', () => {
   it('makes the background inert while the panel is open', async () => {
     const user = userEvent.setup()
     renderAt('/cooking/fixture-curry')
-    const layout = screen.getByRole('tablist').parentElement!
+    const layout = screen.getByRole('tablist').closest<HTMLElement>('[data-layout]')!
     expect(layout.inert).toBe(false)
     await user.keyboard('?')
     expect(layout.inert).toBe(true)

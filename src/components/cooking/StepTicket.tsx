@@ -64,7 +64,7 @@ export default function StepTicket({
   const long = instruction.length > LONG_STEP_CHARS
   return (
     <section aria-label={`Step ${stepNumber}`} className="ticket flex h-full min-h-0 flex-col">
-      <div className="flex min-h-14 shrink-0 flex-wrap items-center justify-between gap-x-3 gap-y-1 px-3 py-1 sm:px-6 sm:py-1.5">
+      <div className="flex min-h-14 shrink-0 flex-wrap items-center justify-between gap-x-3 gap-y-1 px-5 py-1 sm:px-8 sm:py-1.5">
         <Label className="text-base! whitespace-nowrap">
           Step {stepNumber} of {stepCount}
         </Label>

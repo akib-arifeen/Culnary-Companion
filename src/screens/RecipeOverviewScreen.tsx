@@ -3,7 +3,7 @@ import { Check } from 'lucide-react'
 import Page from '../components/Page'
 import { Button, ButtonLink, Label, Ticket } from '../components/ui/primitives'
 import { getRecipeById } from '../data/recipes'
-import { shortServes, shortTime } from '../lib/recipeMeta'
+import { bodyCounts, extraFacts, shortServes, shortTime } from '../lib/recipeMeta'
 import { useRecipeContext } from '../context/RecipeContext'
 
 const linkClass = 'underline underline-offset-3 decoration-2 hover:decoration-accent'
@@ -42,7 +42,7 @@ const RecipeOverviewScreen = () => {
   const cookingPath = `/cooking/${recipe.id}`
   const { photo, source } = recipe
 
-  // Strip: short forms and computed counts. The full source-stated strings are shown once, under the summary.
+  // Strip: short forms and computed counts. The body adds only facts the strip cannot carry (DESIGN.md).
   const serves = shortServes(recipe.servings)
   const time = shortTime(recipe.time)
   const meta = [
@@ -50,7 +50,8 @@ const RecipeOverviewScreen = () => {
     serves ? `Serves ${serves}` : null,
     `${recipe.steps.length} ${recipe.steps.length === 1 ? 'step' : 'steps'}`,
   ].filter(Boolean)
-  const stated = [recipe.servings ? `Serves ${recipe.servings}` : null, recipe.time, recipe.category].filter(Boolean).join(' · ')
+  const more = extraFacts(recipe)
+  const counts = bodyCounts(recipe)
   const revision = source.revisionUrl.match(/oldid=(\d+)/)?.[1]
 
   return (
@@ -61,14 +62,14 @@ const RecipeOverviewScreen = () => {
       <h1 className="mt-2 max-w-3xl text-title font-extrabold tracking-tight text-ink">{recipe.title}</h1>
 
       <Ticket className="mt-5" header={<Label className="whitespace-nowrap text-ink">{meta.join(' · ')}</Label>} bodyClassName="p-4 sm:p-5">
-        <div className="grid gap-6 md:grid-cols-[3fr_2fr] md:items-start">
-          <figure className="min-w-0">
+        <div className="grid gap-5 md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] md:items-stretch">
+          <figure className="flex min-w-0 flex-col">
             <img
               src={photo.src}
               alt={photo.alt}
               width={photo.width}
               height={photo.height}
-              className="aspect-4/3 w-full rounded-ticket border border-rule bg-paper-2 object-cover"
+              className="aspect-4/3 w-full rounded-ticket border border-rule bg-paper-2 object-cover md:max-h-80"
             />
             <figcaption className="mt-2 text-sm text-ink-2">
               Photo: {photo.author},{' '}
@@ -77,9 +78,12 @@ const RecipeOverviewScreen = () => {
             </figcaption>
           </figure>
 
-          <div className="flex min-w-0 flex-col gap-4">
-            <p className="max-w-prose text-xl text-ink">{recipe.summary}</p>
-            {stated ? <p className="max-w-prose text-ink-2">{stated}</p> : null}
+          <div className="flex min-w-0 flex-col gap-5 md:justify-center">
+            <div className="space-y-3">
+              <p className="max-w-prose text-xl text-ink">{recipe.summary}</p>
+              {more.length > 0 ? <p className="max-w-prose text-ink-2">{more.join(' · ')}</p> : null}
+              <p className="label-mono text-ink-2">{counts}</p>
+            </div>
             <div>
               <Button
                 variant="secondary"
@@ -100,13 +104,13 @@ const RecipeOverviewScreen = () => {
           <h2 id="mise-title" className="label-mono text-ink">Mise en place</h2>
           <ul className="mt-3 divide-y divide-dashed divide-rule">
             {recipe.ingredients.map((ingredient) => (
-              <li key={ingredient.name} className="flex items-baseline justify-between gap-4 py-2.5">
-                <div className="min-w-0">
+              <li key={ingredient.name} className="flex flex-wrap items-baseline justify-between gap-x-4 py-2.5">
+                <div className="min-w-0 flex-1 basis-40">
                   <p className="font-bold text-ink">{ingredient.name}</p>
                   {ingredient.note ? <p className="text-sm text-ink-2">{ingredient.note}</p> : null}
                 </div>
                 {ingredient.quantity ? (
-                  <p className="shrink-0 text-right font-mono font-semibold text-ink">{ingredient.quantity}</p>
+                  <p className="ml-auto shrink-0 text-right font-mono font-semibold text-ink">{ingredient.quantity}</p>
                 ) : null}
               </li>
             ))}

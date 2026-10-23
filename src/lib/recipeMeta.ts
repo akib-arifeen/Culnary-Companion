@@ -32,3 +32,36 @@ export function shortTime(time?: string): string | null {
   const body = h === 0 ? `${m} MIN` : m === 0 ? `${h} HR` : `${h} HR ${m} MIN`
   return approx + body
 }
+
+/** Parenthetical addendum in a servings string ("10 (makes 56 cookies)" -> "Makes 56 cookies"). */
+function servingAddendum(servings?: string): string | null {
+  const inner = servings?.match(/\(([^)]+)\)/)?.[1]?.trim()
+  if (!inner) return null
+  return inner.charAt(0).toUpperCase() + inner.slice(1)
+}
+
+/**
+ * Source-stated facts the header strip does NOT already show. The strip carries one total time, the
+ * leading servings number and the step count, so repeating those in the body would read as a template.
+ * What is left is genuinely additive: the split prep/cook times, and a servings addendum.
+ */
+export function extraFacts(recipe: { servings?: string; time?: string }): string[] {
+  const facts: string[] = []
+  const addendum = servingAddendum(recipe.servings)
+  if (addendum) facts.push(addendum)
+  if (recipe.time && /prep|cook|total/i.test(recipe.time)) {
+    for (const part of recipe.time.split(',')) {
+      const text = part.trim().replace(/:\s*/, ' ')
+      if (text && !/^total\b/i.test(text)) facts.push(text)
+    }
+  }
+  return facts
+}
+
+/** Computed counts for the recipe body: an at-a-glance line that is never a duplicate of the strip. */
+export function bodyCounts(recipe: { ingredients: readonly unknown[]; steps: readonly { duration?: number }[] }): string {
+  const ingredients = `${recipe.ingredients.length} ${recipe.ingredients.length === 1 ? 'ingredient' : 'ingredients'}`
+  const timed = recipe.steps.filter((step) => step.duration !== undefined).length
+  if (timed === 0) return ingredients
+  return `${ingredients} · ${timed} timed ${timed === 1 ? 'step' : 'steps'}`
+}
