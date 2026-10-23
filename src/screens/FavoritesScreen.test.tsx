@@ -22,8 +22,8 @@ describe('Saved and In progress', () => {
   it('Saved: designed empty state with one action to Recipes', () => {
     wrap(<FavoritesScreen />)
     expect(screen.getByRole('heading', { level: 1, name: 'Saved' })).toBeTruthy()
-    expect(screen.getByText('Saved · 0')).toBeTruthy()
-    expect(screen.getByText('Tap SAVE RECIPE on any recipe to keep it here.')).toBeTruthy()
+    expect(screen.getByRole('heading', { level: 2, name: 'Nothing saved yet' })).toBeTruthy()
+    expect(screen.getByText(/tap Save recipe/i)).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Browse recipes' }).getAttribute('href')).toBe('/')
   })
 
@@ -36,8 +36,8 @@ describe('Saved and In progress', () => {
 
   it('In progress: empty state, then a ticket with its step and a Resume link', () => {
     wrap(<RecentsScreen />)
-    expect(screen.getByText('In progress · 0')).toBeTruthy()
-    expect(screen.getByText('Recipes you start cooking appear here with the step you reached.')).toBeTruthy()
+    expect(screen.getByRole('heading', { level: 2, name: 'Nothing on the pass yet' })).toBeTruthy()
+    expect(screen.getByText(/Start cooking any recipe and the step you reached is kept here/)).toBeTruthy()
     cleanup()
     window.localStorage.setItem(PREF_KEYS.progress, JSON.stringify({ 'alpha-stew': 2 }))
     wrap(<RecentsScreen />)

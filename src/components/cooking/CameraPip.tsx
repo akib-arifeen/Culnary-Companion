@@ -63,7 +63,7 @@ export default function CameraPip({ mode, placement, status, live, videoRef, onH
       type="button"
       onClick={onHidePreview}
       aria-label="Hide camera preview"
-      className={`grid shrink-0 ${placement === 'float' ? 'size-9 bg-paper/90' : 'size-11'} cursor-pointer place-items-center rounded-(--radius-control) text-ink hover:bg-paper-2`}
+      className={`grid shrink-0 ${placement === 'float' ? 'size-12 bg-paper/90' : 'size-14'} cursor-pointer place-items-center rounded-(--radius-control) text-ink hover:bg-paper-2`}
     >
       <EyeOff className="size-5" strokeWidth={2} aria-hidden="true" />
     </button>
@@ -84,7 +84,7 @@ export default function CameraPip({ mode, placement, status, live, videoRef, onH
   }
 
   return (
-    <div className="ticket absolute right-2 bottom-2 w-28 p-1 sm:w-36 short:w-28">
+    <div className="ticket absolute right-2 bottom-2 w-32 p-1 sm:w-40 short:w-28">
       <Video status={status} live={live} videoRef={videoRef} className="w-full" compact />
       <div className="absolute top-1.5 right-1.5">{hide}</div>
     </div>

@@ -15,6 +15,7 @@ const RecentsScreen = () => {
   return (
     <Page>
       <h1 className="text-title font-extrabold tracking-tight text-ink">In progress</h1>
+      <p className="mt-2 max-w-prose text-ink-2">Recipes you started, holding the step you reached.</p>
       <div className="mt-6">
         {items.length > 0 ? (
           <ul aria-label="Recipes in progress" className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -25,8 +26,8 @@ const RecentsScreen = () => {
             ))}
           </ul>
         ) : (
-          <EmptyState strip="In progress · 0" actionLabel="Pick a recipe">
-            Recipes you start cooking appear here with the step you reached.
+          <EmptyState strip="In progress" title="Nothing on the pass yet" actionLabel="Pick a recipe">
+            Start cooking any recipe and the step you reached is kept here, ready to resume.
           </EmptyState>
         )}
       </div>

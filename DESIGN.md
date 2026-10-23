@@ -36,6 +36,7 @@ That is exactly this app's job, so the whole system borrows from it:
 - **Cooking:** "The Pass".
   - **At 1024 px and up:** the **step ticket** (current step, giant) takes about 62 %. The **rail** takes the rest and stacks three things: the HEARD strip, the timers, then the ingredients, with the ones mentioned in the current step highlighted. A **control strip** runs along the bottom: Back · Read · **Next**. Next is a large ink block at the right edge, not a full-width slab.
   - **Below 1024 px:** the step fills the screen, the HEARD strip sits at the top, and the tabs are Steps / Ingredients / Timers.
+  - **The HEARD strip is the loudest status.** In the wide layout its ticket carries a 2 px ink edge — the only rail panel that does. Its turn-on / fix action is a full-height 56 px control at the strip's edge; on phones the strip is one 56 px line.
 - **Settings:** "Station setup". One column of real switches grouped as Hands-free · Reading · Your data · About and credits.
 - **Onboarding:** "Before service". Three ordered blocks: **Voice** (first), **Gestures**, **Touch and keys**. Each has one live test ("Say 'next'", "Show a thumb up") and its own on-switch. One ink button closes it.
 

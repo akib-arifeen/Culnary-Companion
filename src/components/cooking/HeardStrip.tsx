@@ -18,6 +18,8 @@ export interface HeardData {
 const KIND_LABEL: Record<HeardData['kind'], string> = { voice: 'Heard', key: 'Key', gesture: 'Gesture', tap: 'Tap', info: 'Note' }
 
 const FLASH_MS = 300 // ds-allow-hardcode: DESIGN.md § Motion, heard flash is 300 ms
+/** Cooking-mode targets are 56 px (DESIGN.md). The strip's action is the control that turns voice on. */
+const COOKING_TARGET = 'min-h-14!' // ds-allow-hardcode: DESIGN.md § Typography 56 px cooking target
 
 function isFailed(status: MediaStatus): boolean {
   return status === 'denied' || status === 'unavailable' || status === 'error'
@@ -41,7 +43,7 @@ function Problem({ message, onRetry, canRetry }: { message: string | null; onRet
         <span className="min-w-0">{message ?? 'Something went wrong.'}</span>
       </span>
       {canRetry ? (
-        <Button variant="secondary" onClick={onRetry} className="min-h-11! px-3!">
+        <Button variant="secondary" onClick={onRetry} className={`${COOKING_TARGET} px-4!`}>
           Try again
         </Button>
       ) : null}
@@ -51,7 +53,7 @@ function Problem({ message, onRetry, canRetry }: { message: string | null; onRet
 
 function TurnOn({ onClick, label }: { onClick: () => void; label: string }) {
   return (
-    <Button variant="secondary" onClick={onClick} aria-label={label} className="min-h-11! px-3!">
+    <Button variant="secondary" onClick={onClick} aria-label={label} className={`${COOKING_TARGET} px-4!`}>
       Turn on
     </Button>
   )
@@ -72,7 +74,7 @@ interface HeardStripProps {
   onRetryGestures: () => void
   /** Boxed as a ticket in the rail; an edge-to-edge bar everywhere else. */
   framed: boolean
-  /** Phones: ONE line of at most 40 px (state + last heard); problems become a FIX button that opens the help sheet. */
+  /** Phones: ONE 56 px line — state, last heard, and a full-height action at the right edge. */
   compact: boolean
   onFix: (section: 'voice' | 'gestures') => void
 }
@@ -80,7 +82,7 @@ interface HeardStripProps {
 /**
  * The most prominent status element on the cooking screen: the mic state, the camera state and the last thing
  * understood, in call-and-response language ("HEARD  Next step  "next""). It is the only live region of the screen,
- * so it replaces the old toasts: one place to look.
+ * so it replaces the old toasts: one place to look. In the wide layout it carries a 2 px ink edge.
  */
 export default function HeardStrip({
   heard,
@@ -126,40 +128,49 @@ export default function HeardStrip({
     } else {
       state = <><Dot on="hollow" />Starting mic…</>
     }
+    const action = bad
+      ? { label: 'Fix', name: `Fix ${bad === 'voice' ? 'microphone' : 'camera'}`, onClick: () => onFix(bad) }
+      : !voiceOn
+        ? { label: 'Turn on', name: 'Turn on voice', onClick: onTurnOnVoice }
+        : null
     return (
       <div
         role="status"
         aria-live="polite"
         data-compact="true"
-        className="relative flex h-10 shrink-0 items-center gap-3 overflow-hidden border-b border-rule bg-paper px-3"
+        className="relative flex min-h-14 shrink-0 items-stretch overflow-hidden border-b border-rule bg-paper"
       >
         <span ref={flashRef} aria-hidden="true" className="pointer-events-none absolute inset-0 bg-accent-soft opacity-0" />
-        <State className={`relative shrink-0 ${bad ? 'text-accent!' : ''}`}>{state}</State>
-        {/* Mic / camera detail the one-line state cannot carry; a screen reader still hears it. */}
-        <span className="sr-only">
-          {speaking && voiceOn && voiceStatus === 'on' ? 'Mic paused while I read. ' : ''}
-          {gesturesOn ? (gesturesStatus === 'on' ? 'Camera on.' : '') : 'Gestures off.'}
-        </span>
-        <Hand aria-hidden="true" strokeWidth={2} className={`relative size-5 shrink-0 ${gesturesOn && gesturesStatus === 'on' ? 'text-ink' : camBad ? 'text-accent' : 'text-ink-2 opacity-50'}`} />
-        <span className="relative flex min-w-0 flex-1 items-baseline gap-2">
-          {heard ? (
-            <>
-              <Label className="shrink-0 text-base! text-ink!">{KIND_LABEL[heard.kind]}</Label>
-              <span key={heard.key} className="min-w-0 truncate text-xl font-bold text-ink">
-                {heard.text}
-                {heard.heard ? <span className="ml-2 font-normal text-ink-2">“{heard.heard}”</span> : null}
-              </span>
-            </>
-          ) : null}
-        </span>
-        {bad ? (
-          <Button variant="secondary" onClick={() => onFix(bad)} aria-label={`Fix ${bad === 'voice' ? 'microphone' : 'camera'}`} className="relative min-h-9! shrink-0 px-3!">
-            Fix
-          </Button>
-        ) : !voiceOn ? (
-          <Button variant="secondary" onClick={onTurnOnVoice} aria-label="Turn on voice" className="relative min-h-9! shrink-0 px-3!">
-            Turn on
-          </Button>
+        <div className="relative flex min-w-0 flex-1 items-center gap-3 px-3">
+          <State className={`shrink-0 ${bad ? 'text-accent!' : ''}`}>{state}</State>
+          {/* Camera state the one-line strip cannot carry; a screen reader still hears it. */}
+          <span className="sr-only">
+            {speaking && voiceOn && voiceStatus === 'on' ? 'Mic paused while I read. ' : ''}
+            {gesturesOn ? (gesturesStatus === 'on' ? 'Camera on.' : '') : 'Gestures off.'}
+          </span>
+          <span className="relative flex min-w-0 flex-1 items-baseline gap-2">
+            {heard ? (
+              <>
+                <Label className="shrink-0 text-base! text-ink!">{KIND_LABEL[heard.kind]}</Label>
+                <span key={heard.key} className="min-w-0 truncate text-lg font-bold text-ink">
+                  {heard.text}
+                  {heard.heard ? <span className="ml-2 font-normal text-ink-2">“{heard.heard}”</span> : null}
+                </span>
+              </>
+            ) : (
+              <span className="min-w-0 truncate text-base text-ink-2">Say “next”.</span>
+            )}
+          </span>
+        </div>
+        {action ? (
+          <button
+            type="button"
+            onClick={action.onClick}
+            aria-label={action.name}
+            className="label-mono relative shrink-0 cursor-pointer border-l-2 border-rule bg-paper px-4 text-ink hover:bg-paper-2"
+          >
+            {action.label}
+          </button>
         ) : null}
       </div>
     )
@@ -225,7 +236,7 @@ export default function HeardStrip({
     <div
       role="status"
       aria-live="polite"
-      className={`relative shrink-0 overflow-hidden bg-paper ${framed ? 'ticket' : 'border-b border-rule'}`}
+      className={`relative shrink-0 overflow-hidden bg-paper ${framed ? 'ticket border-2! border-ink!' : 'border-b border-rule'}`}
     >
       <span ref={flashRef} aria-hidden="true" className="pointer-events-none absolute inset-0 bg-accent-soft opacity-0" />
       <div className="relative flex flex-col gap-1.5 px-3 py-2 sm:px-5">
@@ -233,19 +244,19 @@ export default function HeardStrip({
           <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">{mic}</div>
           <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">{camera}</div>
         </div>
-        {heard || voiceOn ? (
-          <p className="flex min-w-0 items-baseline gap-3">
-            <Label className="shrink-0 text-lg! text-ink!">{heard ? KIND_LABEL[heard.kind] : 'Heard'}</Label>
-            {heard ? (
-              <span key={heard.key} className="line-clamp-2 min-w-0 text-xl font-bold break-words text-ink">
-                {heard.text}
-                {heard.heard ? <span className="ml-3 font-normal text-ink-2">“{heard.heard}”</span> : null}
-              </span>
-            ) : (
-              <span className="line-clamp-2 min-w-0 text-xl text-ink-2">Say “next”, “back” or “repeat”.</span>
-            )}
-          </p>
-        ) : null}
+        <p className="flex min-w-0 items-baseline gap-3">
+          <Label className="shrink-0 text-lg! text-ink!">{heard ? KIND_LABEL[heard.kind] : 'Heard'}</Label>
+          {heard ? (
+            <span key={heard.key} className="line-clamp-2 min-w-0 text-xl font-bold break-words text-ink">
+              {heard.text}
+              {heard.heard ? <span className="ml-3 font-normal text-ink-2">“{heard.heard}”</span> : null}
+            </span>
+          ) : (
+            <span className="line-clamp-2 min-w-0 text-xl text-ink-2">
+              {voiceOn ? 'Say “next”, “back” or “repeat”.' : 'Turn voice on to call the steps out.'}
+            </span>
+          )}
+        </p>
       </div>
     </div>
   )

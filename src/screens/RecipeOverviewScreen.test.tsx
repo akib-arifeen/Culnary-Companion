@@ -32,10 +32,12 @@ describe('RecipeOverviewScreen (Full ticket)', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Alpha Stew' })).toBeTruthy()
   })
 
-  it('shows a one-line strip and the full stated facts once in the body', () => {
+  it('shows a one-line strip and only the body facts the strip cannot carry', () => {
     renderAt('/recipe/alpha-stew')
     expect(screen.getByText('45 MIN · Serves 4 · 3 steps')).toBeTruthy()
-    expect(screen.getByText('Serves 4 · 45 minutes · Main course')).toBeTruthy()
+    // The strip already says "45 min" and "Serves 4", so the body adds computed counts, not a repeat.
+    expect(screen.getByText('2 ingredients · 1 timed step')).toBeTruthy()
+    expect(screen.queryByText(/Main course/)).toBeNull()
   })
 
   it('shows only stated facts when the source gives none', () => {

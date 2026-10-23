@@ -97,7 +97,11 @@ const SettingsScreen = () => {
             />
             <SwitchRow
               label="Camera preview"
-              description="Show a small mirrored view of your camera while gestures are on."
+              description={
+                gestures
+                  ? 'Show a small mirrored view of your camera while gestures are on.'
+                  : 'Shows the camera while gestures are on. Turn hand gestures on to use it.'
+              }
               checked={cameraPreview}
               onChange={setCameraPreview}
             />

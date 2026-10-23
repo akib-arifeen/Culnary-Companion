@@ -463,13 +463,15 @@ function CookingSession({ recipe }: { recipe: Recipe }) {
         <TopBar recipeId={recipe.id} title={recipe.title} stepIndex={state.stepIndex} stepCount={state.stepCount} onOpenHelp={() => openPanel()} />
         {layout === 'lg' ? null : heardStrip}
         {layout === 'tabs' ? (
-          <CookingTabs
-            tab={state.tab}
-            onSelect={(next) => run({ type: 'showTab', tab: next }, 'tap')}
-            checkedCount={state.checked.size}
-            ingredientCount={state.ingredientCount}
-            runningTimers={runningCount}
-          />
+          <nav aria-label="Cooking sections" className="shrink-0">
+            <CookingTabs
+              tab={state.tab}
+              onSelect={(next) => run({ type: 'showTab', tab: next }, 'tap')}
+              checkedCount={state.checked.size}
+              ingredientCount={state.ingredientCount}
+              runningTimers={runningCount}
+            />
+          </nav>
         ) : null}
 
         <main className="relative min-h-0 flex-1">
@@ -489,7 +491,7 @@ function CookingSession({ recipe }: { recipe: Recipe }) {
           ) : layout === 'md' ? (
             <div className={`flex h-full flex-col gap-3 p-3 ${reserve}`}>
               <div className="min-h-0 flex-[3]">{stepTicket}</div>
-              <div className="grid min-h-0 flex-[2] grid-cols-2 gap-3">
+              <div className="grid min-h-0 flex-[2] grid-cols-[minmax(0,3fr)_minmax(0,2fr)] gap-3">
                 <div ref={ingredientsRef} className="min-h-0 overflow-y-auto">
                   {ingredientsPanel}
                 </div>
