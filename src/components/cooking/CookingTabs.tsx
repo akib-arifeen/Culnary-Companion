@@ -18,7 +18,7 @@ export default function CookingTabs({ tab, onSelect, checkedCount, ingredientCou
     { id: 'timers', label: 'Timers', Icon: Timer, badge: runningTimers > 0 ? String(runningTimers) : null, context: ' running' },
   ]
   return (
-    <div role="tablist" aria-label="Cooking views" className="flex h-14 shrink-0 border-b border-rule bg-paper">
+    <div role="tablist" aria-label="Cooking views" className="flex h-14 shrink-0 bg-paper shadow-[inset_0_-1px_0_var(--color-rule)]">
       {tabs.map(({ id, label, Icon, badge, context }) => {
         const selected = tab === id
         // Name = visible label then its badge context, in the same order the eye reads them (WCAG 2.5.3).
