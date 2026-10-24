@@ -18,7 +18,7 @@ export default function CookingTabs({ tab, onSelect, checkedCount, ingredientCou
     { id: 'timers', label: 'Timers', Icon: Timer, badge: runningTimers > 0 ? String(runningTimers) : null, context: ' running' },
   ]
   return (
-    <div role="tablist" aria-label="Cooking views" className="flex h-14 shrink-0 border-b border-rule bg-paper">
+    <div role="tablist" aria-label="Cooking views" className="flex h-14 shrink-0 bg-paper shadow-[inset_0_-1px_0_var(--color-rule)]">
       {tabs.map(({ id, label, Icon, badge, context }) => {
         const selected = tab === id
         // Name = visible label then its badge context, in the same order the eye reads them (WCAG 2.5.3).
@@ -33,7 +33,7 @@ export default function CookingTabs({ tab, onSelect, checkedCount, ingredientCou
             aria-controls="cooking-panel"
             aria-label={name}
             onClick={() => onSelect(id)}
-            className={`label-mono relative flex min-w-0 flex-1 cursor-pointer flex-col items-center justify-center gap-0.5 px-1 sm:flex-row sm:gap-2 sm:px-2 ${
+            className={`label-mono relative flex min-w-0 flex-1 cursor-pointer flex-col items-center justify-center gap-0.5 px-1 shadow-[inset_0_-1px_0_var(--color-rule)] sm:flex-row sm:gap-2 sm:px-2 ${
               selected ? 'text-ink' : 'text-ink-2 hover:bg-paper-2'
             }`}
           >
