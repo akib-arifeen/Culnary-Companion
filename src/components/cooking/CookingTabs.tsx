@@ -1,3 +1,4 @@
+import { useRef, useState, type KeyboardEvent } from 'react'
 import { ListOrdered, ShoppingBasket, Timer, type LucideIcon } from 'lucide-react'
 import type { CookingTab } from '../../lib/commands'
 
@@ -17,22 +18,78 @@ export default function CookingTabs({ tab, onSelect, checkedCount, ingredientCou
     { id: 'ingredients', label: 'Ingredients', Icon: ShoppingBasket, badge: `${checkedCount}/${ingredientCount}`, context: ' checked' },
     { id: 'timers', label: 'Timers', Icon: Timer, badge: runningTimers > 0 ? String(runningTimers) : null, context: ' running' },
   ]
+
+  // Manual activation: focus never changes the selected panel on its own, only Enter, Space or a tap does — the
+  // model this list already had. Arrows move focus within the list, and the single tab stop follows focus, falling
+  // back to the selected tab once focus leaves the list.
+  const [focused, setFocused] = useState<CookingTab | null>(null)
+  const tabRefs = useRef<Array<HTMLButtonElement | null>>([])
+  const tabStop = focused ?? tab
+
+  const moveFocus = (index: number) => {
+    const next = (index + tabs.length) % tabs.length
+    setFocused(tabs[next].id)
+    tabRefs.current[next]?.focus()
+  }
+
+  const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    if (event.ctrlKey || event.metaKey || event.altKey) return
+    const current = tabs.findIndex(({ id }) => id === tabStop)
+    switch (event.key) {
+      case 'ArrowRight':
+        event.preventDefault()
+        // The window cooking shortcut also maps the arrows to step navigation; while focus is in this list the
+        // arrows belong to the tab list.
+        event.stopPropagation()
+        moveFocus(current + 1)
+        break
+      case 'ArrowLeft':
+        event.preventDefault()
+        event.stopPropagation()
+        moveFocus(current - 1)
+        break
+      case 'Home':
+        event.preventDefault()
+        moveFocus(0)
+        break
+      case 'End':
+        event.preventDefault()
+        moveFocus(tabs.length - 1)
+        break
+      default:
+        break
+    }
+  }
+
   return (
-    <div role="tablist" aria-label="Cooking views" className="flex h-14 shrink-0 bg-paper shadow-[inset_0_-1px_0_var(--color-rule)]">
-      {tabs.map(({ id, label, Icon, badge, context }) => {
+    <div
+      role="tablist"
+      aria-label="Cooking views"
+      className="flex h-14 shrink-0 bg-paper shadow-[inset_0_-1px_0_var(--color-rule)]"
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setFocused(null)
+      }}
+    >
+      {tabs.map(({ id, label, Icon, badge, context }, index) => {
         const selected = tab === id
         // Name = visible label then its badge context, in the same order the eye reads them (WCAG 2.5.3).
         const name = badge ? `${label} ${badge}${context}` : label
         return (
           <button
             key={id}
+            ref={(el) => {
+              tabRefs.current[index] = el
+            }}
             type="button"
             role="tab"
             id={`cooking-tab-${id}`}
             aria-selected={selected}
             aria-controls="cooking-panel"
             aria-label={name}
+            tabIndex={tabStop === id ? 0 : -1}
             onClick={() => onSelect(id)}
+            onFocus={() => setFocused(id)}
+            onKeyDown={onKeyDown}
             className={`label-mono relative flex min-w-0 flex-1 cursor-pointer flex-col items-center justify-center gap-0.5 px-1 shadow-[inset_0_-1px_0_var(--color-rule)] sm:flex-row sm:gap-2 sm:px-2 ${
               selected ? 'text-ink' : 'text-ink-2 hover:bg-paper-2'
             }`}

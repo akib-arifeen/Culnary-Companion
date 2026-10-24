@@ -533,6 +533,48 @@ describe('CookingScreen', () => {
     expect(screen.getAllByRole('tab')).toHaveLength(3)
   })
 
+  it('tabs: arrows move focus only (manual activation), one tab stop, Home/End jump, Enter selects', async () => {
+    const user = userEvent.setup()
+    renderAt('/cooking/fixture-curry')
+    const [steps, ingredients, timers] = screen.getAllByRole('tab')
+    expect(steps.getAttribute('aria-selected')).toBe('true')
+    expect(steps.tabIndex).toBe(0)
+    expect([ingredients.tabIndex, timers.tabIndex]).toEqual([-1, -1])
+
+    steps.focus()
+    await user.keyboard('{ArrowRight}')
+    expect(document.activeElement).toBe(ingredients)
+    // Focus alone does not switch panels, and the arrow does not also reach the window's step shortcut.
+    expect(ingredients.getAttribute('aria-selected')).toBe('false')
+    expect(screen.getByText(`Step 1 of ${stepCount}`)).toBeTruthy()
+    // The single tab stop follows focus.
+    expect(ingredients.tabIndex).toBe(0)
+    expect(steps.tabIndex).toBe(-1)
+    expect(screen.getAllByRole('tab').filter((element) => element.tabIndex === 0)).toHaveLength(1)
+
+    await user.keyboard('{ArrowRight}')
+    expect(document.activeElement).toBe(timers)
+    await user.keyboard('{ArrowRight}')
+    expect(document.activeElement).toBe(steps)
+    await user.keyboard('{End}')
+    expect(document.activeElement).toBe(timers)
+    await user.keyboard('{Home}')
+    expect(document.activeElement).toBe(steps)
+
+    await user.keyboard('{ArrowRight}')
+    await user.keyboard('{Enter}')
+    expect(screen.getByRole('tabpanel', { name: /ingredients/i })).toBeTruthy()
+    expect(ingredients.getAttribute('aria-selected')).toBe('true')
+    expect(ingredients.tabIndex).toBe(0)
+    expect(steps.tabIndex).toBe(-1)
+
+    // Pointer selection is unchanged and moves the tab stop with it.
+    await user.click(timers)
+    expect(timers.getAttribute('aria-selected')).toBe('true')
+    expect(timers.tabIndex).toBe(0)
+    expect(screen.getByRole('tabpanel', { name: /timers/i })).toBeTruthy()
+  })
+
   it('the start-timer button in the step header starts a timer for that step and turns into its clock', async () => {
     const user = userEvent.setup()
     renderAt('/cooking/fixture-curry')
