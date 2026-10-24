@@ -33,7 +33,7 @@ export default function CookingTabs({ tab, onSelect, checkedCount, ingredientCou
             aria-controls="cooking-panel"
             aria-label={name}
             onClick={() => onSelect(id)}
-            className={`label-mono relative flex min-w-0 flex-1 cursor-pointer flex-col items-center justify-center gap-0.5 px-1 sm:flex-row sm:gap-2 sm:px-2 ${
+            className={`label-mono relative flex min-w-0 flex-1 cursor-pointer flex-col items-center justify-center gap-0.5 px-1 shadow-[inset_0_-1px_0_var(--color-rule)] sm:flex-row sm:gap-2 sm:px-2 ${
               selected ? 'text-ink' : 'text-ink-2 hover:bg-paper-2'
             }`}
           >
