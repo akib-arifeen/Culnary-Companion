@@ -135,11 +135,25 @@ function CookingSession({ recipe }: { recipe: Recipe }) {
 
   const startTimer = (minutesArg?: number) => {
     const number = state.stepIndex + 1
-    const minutes = minutesArg ?? recipe.steps[state.stepIndex].duration ?? 5
+    const current = recipe.steps[state.stepIndex]
+    // A timer is only ever backed by a time the step states (or a time the cook gives outright).
+    // With neither, say how to give one instead of inventing a duration.
+    const minutes = minutesArg ?? current.duration
+    if (minutes === undefined) {
+      const text = `Step ${number} doesn’t state a time. Say “set a timer for 10 minutes” to choose one.`
+      notify('info', text)
+      speak(text)
+      return
+    }
+    const perSide = minutesArg === undefined && /per side/i.test(current.instruction)
     const id = timers.start(
       minutesArg === undefined ? { label: `Step ${number}`, minutes, stepNumber: number, recipeId: recipe.id } : { label: `${minutes} min timer`, minutes },
     )
-    speak(id === '' ? 'I couldn’t set that timer.' : `Timer set for ${formatSpokenDuration(minutes * 60_000)}.`)
+    speak(
+      id === ''
+        ? 'I couldn’t set that timer.'
+        : `Timer set for ${formatSpokenDuration(minutes * 60_000)}${perSide ? ' per side' : ''}.`,
+    )
   }
 
   const tabPhrase = (tab: CookingTab): string =>

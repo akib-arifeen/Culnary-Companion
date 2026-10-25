@@ -62,6 +62,8 @@ export default function StepTicket({
   uses = [],
 }: StepTicketProps) {
   const long = instruction.length > LONG_STEP_CHARS
+  // A step that times each side ("2–3 minutes per side") says so on the chip; it is still one timer.
+  const perSide = /per side/i.test(instruction)
   return (
     <section aria-label={`Step ${stepNumber}`} className="ticket flex h-full min-h-0 flex-col">
       <div className="flex min-h-14 shrink-0 flex-wrap items-center justify-between gap-x-3 gap-y-1 px-5 py-1 sm:px-8 sm:py-1.5">
@@ -85,7 +87,7 @@ export default function StepTicket({
             </span>
           ) : (
             <Button variant="secondary" size="lg" onClick={onStartTimer} className="shrink-0 max-sm:px-3 max-sm:text-xs">
-              Start {duration}-min timer
+              Start {duration}-min timer{perSide ? ' (per side)' : ''}
             </Button>
           )
         ) : null}

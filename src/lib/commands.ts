@@ -17,7 +17,10 @@ export type Command =
   | { type: 'showTab'; tab: CookingTab }
   /** Ingredients <-> steps. */
   | { type: 'toggleIngredients' }
-  /** Omitted minutes = the current step's duration if it has one, else 5. */
+  /**
+   * Omitted minutes = the current step's duration when the step states one. A step with no stated
+   * time starts no timer: the screen says so and asks for an explicit time instead.
+   */
   | { type: 'startTimer'; minutes?: number }
   | { type: 'pauseTimer' }
   | { type: 'resumeTimer' }
