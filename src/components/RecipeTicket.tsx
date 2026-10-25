@@ -1,6 +1,7 @@
 import { Link } from 'react-router'
 import type { Recipe } from '../data/types'
 import { shortServes, shortTime } from '../lib/recipeMeta'
+import RecipePhoto from './RecipePhoto'
 import { Label, Ticket } from './ui/primitives'
 
 interface RecipeTicketProps {
@@ -11,11 +12,6 @@ interface RecipeTicketProps {
 
 /** Rendered photo width per breakpoint, so the browser picks the 600px or 1200px file. Mirrors RecipeRail's grid. */
 const PHOTO_SIZES = '(min-width: 1280px) 400px, (min-width: 640px) 50vw, 100vw' // ds-allow-hardcode: responsive-image hints, not design values
-
-/** Every photo also ships as a 600px-wide "-600.webp" variant for phones (asserted in src/data/recipes.test.ts). */
-function smallVariant(src: string): string {
-  return src.replace(/\.webp$/, '-600.webp')
-}
 
 /** One order on the rail: mono header strip, perforation, then photo, title, summary. */
 export default function RecipeTicket({ recipe, note }: RecipeTicketProps) {
@@ -39,13 +35,10 @@ export default function RecipeTicket({ recipe, note }: RecipeTicketProps) {
           </>
         }
       >
-        <img
-          src={recipe.photo.src}
-          srcSet={`${smallVariant(recipe.photo.src)} 600w, ${recipe.photo.src} 1200w`}
+        <RecipePhoto
+          photo={recipe.photo}
+          responsive
           sizes={PHOTO_SIZES}
-          alt={recipe.photo.alt}
-          width={recipe.photo.width}
-          height={recipe.photo.height}
           loading="lazy"
           className="aspect-4/3 w-full rounded-ticket border border-rule bg-paper-2 object-cover"
         />

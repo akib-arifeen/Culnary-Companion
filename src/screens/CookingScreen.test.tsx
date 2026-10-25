@@ -389,7 +389,11 @@ describe('CookingScreen', () => {
     await user.keyboard('n')
     await user.keyboard('t')
     await user.click(screen.getByRole('tab', { name: /timers/i }))
-    expect(screen.getAllByRole('button', { name: /^Pause Step 2$/ })).toHaveLength(2)
+    const pauseButtons = screen.getAllByRole('button', { name: /^Pause Step 2/ })
+    expect(pauseButtons).toHaveLength(2)
+    const names = pauseButtons.map((button) => button.getAttribute('aria-label'))
+    expect(new Set(names).size).toBe(2)
+    expect(names).toContain(`Pause Step 2 (1) — ${recipe.title}`)
     expect(screen.getByText(recipe.title)).toBeTruthy()
   })
 
@@ -522,6 +526,28 @@ describe('CookingScreen', () => {
     await user.click(screen.getByRole('button', { name: 'go to /cooking/fixture-soup' }))
     await user.keyboard('{ArrowRight}{ArrowRight}')
     expect(screen.queryByText('This step uses')).toBeNull()
+  })
+
+  it('timers: a typed custom duration is validated in place, then starts a timer', async () => {
+    const user = userEvent.setup()
+    renderAt('/cooking/fixture-curry')
+    await user.click(screen.getByRole('tab', { name: /^Timers$/ }))
+    const input = screen.getByLabelText('Custom timer')
+    await user.type(input, '0')
+    await user.click(screen.getByRole('button', { name: 'Start timer' }))
+    expect(screen.getByRole('alert').textContent).toMatch(/whole minutes/i)
+    expect(document.activeElement).toBe(input)
+    expect(screen.getByRole('tab', { name: /^Timers$/ })).toBeTruthy()
+
+    await user.clear(input)
+    await user.type(input, '7')
+    await user.click(screen.getByRole('button', { name: 'Start timer' }))
+    // One confirmation only: the field's polite status, not the app voice as well.
+    const confirmation = input.closest('form')?.querySelector('[aria-live="polite"]')
+    expect(confirmation?.textContent).toBe('Timer set for 7 minutes.')
+    expect(fakes.speak).not.toHaveBeenCalledWith(expect.stringMatching(/^Timer set for/))
+    expect(screen.getByRole('tab', { name: /^Timers\s*1\s*running$/ })).toBeTruthy()
+    expect(screen.getByRole('timer').textContent).toBe('7:00')
   })
 
   it('timers: presets show inline with no timers and collapse behind "+ Add timer" once one exists', async () => {

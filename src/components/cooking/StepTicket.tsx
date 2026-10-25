@@ -3,8 +3,12 @@ import { formatClock, isRunning, timeLeft, type KitchenTimer } from '../../lib/t
 import { buttonClass } from '../ui/buttonClass'
 import { Button, Label } from '../ui/primitives'
 
-/** DESIGN.md § Typography: a step over this many characters steps down one rung. */
-const LONG_STEP_CHARS = 140
+/**
+ * DESIGN.md § Typography: a step over this many characters steps down one rung. The recipe data gate
+ * allows up to 200 characters; at the phone viewport a 129-character step at the full size overflowed
+ * the ticket and had to be scrolled, so the smaller rung starts at 100.
+ */
+const LONG_STEP_CHARS = 100
 
 interface StepTicketProps {
   stepNumber: number
@@ -102,7 +106,9 @@ export default function StepTicket({
                 {stepNumber}
               </p>
             )}
-            <p className={`max-w-[28ch] font-bold text-ink text-pretty ${long ? 'text-step-s' : 'text-step'}`}>{instruction}</p>
+            <p className={`min-w-0 max-w-[28ch] font-bold break-words text-ink text-pretty ${long ? 'text-step-s' : 'text-step'}`}>
+              {instruction}
+            </p>
           </div>
         </div>
       </div>

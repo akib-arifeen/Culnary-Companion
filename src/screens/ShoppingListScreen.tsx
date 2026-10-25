@@ -9,13 +9,26 @@ import { useShoppingList } from '../hooks/useShoppingList'
 import { copyText } from '../lib/clipboard'
 import { groupShoppingList, shoppingKey, shoppingListText, type ShoppingEntry } from '../lib/shoppingList'
 
+/** The last removal, kept so it can be put back. One level: the next removal replaces it. */
+interface UndoState {
+  /** The list as it stood before the removal, used to put entries back in their old positions. */
+  snapshot: ShoppingEntry[]
+  keys: string[]
+  /** Row to focus once the entries are back. */
+  firstKey: string | null
+  /** What the Undo button does, for its accessible name ("Undo" stays the visible word). */
+  label: string
+  done: string
+}
+
 /**
  * Before cooking: one list, built from whole recipes at their stated quantities. Ticks are stored
  * separately from the cooking screen's checklist, so neither overwrites the other.
  */
 export default function ShoppingListScreen() {
-  const { items, toggleItem, removeItem, removeChecked } = useShoppingList()
+  const { items, toggleItem, removeItem, removeChecked, restoreRemoved } = useShoppingList()
   const [status, setStatus] = useState('')
+  const [undo, setUndo] = useState<UndoState | null>(null)
   const [showPlain, setShowPlain] = useState(false)
 
   const titleRef = useRef<HTMLHeadingElement>(null)
@@ -51,8 +64,47 @@ export default function ShoppingListScreen() {
     const next = ordered[position + 1] ?? ordered[position - 1]
     pendingFocus.current = next ? shoppingKey(next.recipeId, next.index) : 'title'
     const ingredient = getRecipeById(entry.recipeId)?.ingredients[entry.index]
-    setStatus(ingredient ? `Removed ${ingredient.name} from the shopping list.` : '')
+    const key = shoppingKey(entry.recipeId, entry.index)
+    const name = ingredient?.name ?? 'item'
+    setUndo({
+      snapshot: ordered,
+      keys: [key],
+      firstKey: key,
+      label: `Undo removing ${name} from the shopping list`,
+      done: `Restored ${name} to the shopping list.`,
+    })
+    setStatus(
+      ingredient
+        ? `Removed ${ingredient.name} from the shopping list. Undo is available.`
+        : 'Removed an item from the shopping list. Undo is available.',
+    )
     removeItem(entry.recipeId, entry.index)
+  }
+
+  const removeAllChecked = () => {
+    const removed = ordered.filter((entry) => entry.checked)
+    if (removed.length === 0) return
+    pendingFocus.current = 'title'
+    const nouns = `${removed.length} checked ${removed.length === 1 ? 'item' : 'items'}`
+    setUndo({
+      snapshot: ordered,
+      keys: removed.map((entry) => shoppingKey(entry.recipeId, entry.index)),
+      firstKey: shoppingKey(removed[0].recipeId, removed[0].index),
+      label: `Undo removing ${nouns}`,
+      done: `Restored ${nouns} to the shopping list.`,
+    })
+    setStatus(`Removed ${nouns}. Undo is available.`)
+    removeChecked()
+  }
+
+  const undoRemoval = () => {
+    if (!undo) return
+    const restored = restoreRemoved(undo.snapshot, undo.keys)
+    // Only arm the focus move when something actually comes back; a no-op restore must not make a
+    // later list change (a tick, another removal) jump focus to a row the cook is not touching.
+    pendingFocus.current = restored ? undo.firstKey ?? 'title' : null
+    setStatus(restored ? undo.done : 'Nothing to restore; the items are already back.')
+    setUndo(null)
   }
 
   const onCopy = async () => {
@@ -76,9 +128,16 @@ export default function ShoppingListScreen() {
           on this device.
         </p>
 
-        <p role="status" className={status ? 'mt-3 max-w-prose font-bold text-ink' : 'sr-only'}>
-          {status}
-        </p>
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <p role="status" className={status ? 'max-w-prose font-bold text-ink' : 'sr-only'}>
+            {status}
+          </p>
+          {undo ? (
+            <Button variant="secondary" onClick={undoRemoval} aria-label={undo.label}>
+              Undo
+            </Button>
+          ) : null}
+        </div>
 
         {total === 0 ? (
           <div className="mt-6">
@@ -96,13 +155,7 @@ export default function ShoppingListScreen() {
               {checkedCount > 0 ? (
                 <Button
                   variant="secondary"
-                  onClick={() => {
-                    pendingFocus.current = 'title'
-                    setStatus(
-                      checkedCount === 1 ? 'Removed 1 checked item.' : `Removed ${checkedCount} checked items.`,
-                    )
-                    removeChecked()
-                  }}
+                  onClick={removeAllChecked}
                   className="whitespace-nowrap"
                 >
                   Remove checked

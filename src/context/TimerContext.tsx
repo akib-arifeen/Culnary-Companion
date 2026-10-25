@@ -3,6 +3,8 @@ import { playChime } from '../lib/chime'
 import {
   createTimer,
   isRunning,
+  MAX_TIMER_MINUTES,
+  MIN_TIMER_MINUTES,
   pauseTimer,
   resetTimer,
   resumeTimer,
@@ -72,7 +74,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     ({ label, minutes, stepNumber, recipeId }) => {
       if (!Number.isFinite(minutes) || Math.abs(minutes - Math.round(minutes)) > 1e-9) return ''
       const whole = Math.round(minutes)
-      if (whole < 1 || whole > 180) return ''
+      if (whole < MIN_TIMER_MINUTES || whole > MAX_TIMER_MINUTES) return ''
       const t = Date.now()
       settleAll(t)
       const id = newId()

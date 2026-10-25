@@ -1,5 +1,6 @@
 import { Link } from 'react-router'
 import type { Recipe } from '../data/types'
+import RecipePhoto from './RecipePhoto'
 import { Button, ButtonLink, Label, Ticket } from './ui/primitives'
 
 /**
@@ -27,12 +28,10 @@ export default function ResumeTicket({
       }
     >
       <div className="flex grow items-center gap-4 p-4">
-        <img
-          src={recipe.photo.src}
-          alt={recipe.photo.alt}
-          width={recipe.photo.width}
-          height={recipe.photo.height}
+        <RecipePhoto
+          photo={recipe.photo}
           loading="lazy"
+          compact
           className="size-16 shrink-0 rounded-ticket border border-rule bg-paper-2 object-cover"
         />
         <Link to={`/recipe/${recipe.id}`} className="min-w-0 text-ticket font-extrabold text-ink underline-offset-3 hover:underline">

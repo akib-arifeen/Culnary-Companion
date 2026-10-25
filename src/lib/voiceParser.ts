@@ -1,4 +1,5 @@
 import type { Command } from './commands'
+import { MAX_TIMER_MINUTES, MIN_TIMER_MINUTES } from './timers'
 
 export interface VoiceContext {
   /** Ingredient names of the current recipe, e.g. ["Chicken breast", "Garlic", "Coconut milk"]. */
@@ -119,7 +120,7 @@ function durationTokens(text: string): string[] {
 interface DurationScan {
   /** At least one quantity was recognised. */
   found: boolean
-  /** Whole minutes, or null when nothing was found or the total is outside 1..180. */
+  /** Whole minutes, or null when nothing was found or the total is outside MIN_TIMER_MINUTES..MAX_TIMER_MINUTES. */
   minutes: number | null
   /** How many tokens the quantities (plus joining "and"s) account for. */
   consumed: number
@@ -163,12 +164,12 @@ function scanDuration(tokens: readonly string[], allowBare: boolean, allowArticl
   }
   if (found) {
     const minutes = Math.ceil(seconds / 60)
-    return { found, minutes: minutes >= 1 && minutes <= 180 ? minutes : null, consumed }
+    return { found, minutes: minutes >= MIN_TIMER_MINUTES && minutes <= MAX_TIMER_MINUTES ? minutes : null, consumed }
   }
   if (allowBare) {
     for (let i = 0; i < tokens.length; i++) {
       const n = numberAt(tokens, i)
-      if (n) return { found: true, minutes: n.value >= 1 && n.value <= 180 ? n.value : null, consumed: 0 }
+      if (n) return { found: true, minutes: n.value >= MIN_TIMER_MINUTES && n.value <= MAX_TIMER_MINUTES ? n.value : null, consumed: 0 }
     }
   }
   return { found: false, minutes: null, consumed: 0 }
@@ -342,7 +343,7 @@ const RULES: readonly Rule[] = [
  *     - Durations: "<quantity> <unit>" pairs; quantity = digits, number words (one..nineteen, twenty..ninety,
  *       "forty five"), or "<N> and a half"; unit = hour(s)/hr(s)/minute(s)/min(s)/second(s)/sec(s);
  *       idioms "half an hour" = 30, "an hour and a half" / "one and a half hours" = 90. All pairs are summed,
- *       seconds rounded UP to whole minutes; the total must be 1..180.
+ *       seconds rounded UP to whole minutes; the total must sit within MIN_TIMER_MINUTES..MAX_TIMER_MINUTES.
  *       * WITH the word "timer" anywhere: "timer for 7 minutes", "set a timer for ten minutes",
  *         "5 minute timer", "set timer 3" (a bare number counts as minutes only together with "timer"),
  *         "set a timer for a minute" ("a/an <unit>" counts only with "timer")      -> startTimer { minutes }
@@ -418,7 +419,7 @@ export function parseVoiceCommand(transcript: string, ctx: VoiceContext): Comman
  * "half an hour" = 30; "an hour" / "one hour" = 60; "an hour and a half" = 90;
  * "N hours" = N*60; "N seconds" = ceil(N/60) (min 1).
  * Homophones from speech engines: "to"/"too" are NOT numbers, "for" is NOT a number.
- * Valid range 1..180; anything outside -> null.
+ * Valid range MIN_TIMER_MINUTES..MAX_TIMER_MINUTES (the same bounds the timer field uses); anything outside -> null.
  */
 export function parseMinutes(text: string): number | null {
   return scanDuration(durationTokens(text), true, true).minutes
