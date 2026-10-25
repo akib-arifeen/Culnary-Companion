@@ -71,7 +71,7 @@ That is exactly this app's job, so the whole system borrows from it:
   - Quantities, times, timer clocks, step numbers, counts, header-strip labels, the HEARD strip.
   - Labels are UPPERCASE at weight 600 with tracking +0.06em.
 - **Scale.** Fluid `clamp()` values, defined in the Tailwind theme as the `--text-*` tokens below.
-  - `--text-step`: `clamp(1.75rem, min(11cqi, 12cqb), 4.5rem)`, 700, line-height 1.12. These are **container units**: the step body is a size container (`container-type: size`), so the instruction grows to fill whatever space the ticket actually has. That gives about 37 px on a phone ticket, about 54 px on a landscape tablet and the 72 px cap on a laptop, and it never overflows a short embed. Long steps (more than 140 characters) step down one rung to `--text-step-s`: `clamp(1.4rem, min(8.5cqi, 9.5cqb), 3.25rem)`. Outside a size container the units fall back to the viewport.
+  - `--text-step`: `clamp(1.75rem, min(11cqi, 12cqb), 4.5rem)`, 700, line-height 1.12. These are **container units**: the step body is a size container (`container-type: size`), so the instruction grows to fill whatever space the ticket actually has. That gives about 37 px on a phone ticket, about 54 px on a landscape tablet and the 72 px cap on a laptop, and it never overflows a short embed. Long steps (more than 100 characters) step down one rung to `--text-step-s`: `clamp(1.4rem, min(8.5cqi, 9.5cqb), 3.25rem)`. The 100 threshold is deliberate: the longest steps in the recipe data run to 131 characters, and at phone widths those clipped or needed scrolling at the full rung. Stepping them down costs type size at reading distance (about 31 px on a 390 px phone instead of 41 px, and 26 px on a 320 px ticket), which is the trade this design accepts: every word visible beats every word bigger, and shorter steps keep the full rung. At 320×640 the same step still needs 9 px of scroll inside the ticket body; nothing is clipped and nothing runs off the side. Outside a size container the units fall back to the viewport.
   - `--text-clock`: `clamp(2.75rem, 1.8rem + 4vw, 6rem)`, mono, tabular.
   - `--text-title`: `clamp(1.75rem, 1.3rem + 1.6vw, 2.75rem)`, 800, tracking −0.01em.
   - `--text-ticket`: `1.125rem`, 800, for recipe ticket titles.
@@ -92,13 +92,13 @@ That is exactly this app's job, so the whole system borrows from it:
 - **Step change:** the new step fades in and rises 6 px over 200 ms. Nothing else animates on navigation.
 - **Heard flash:** a 300 ms background wash of `accent-soft` on the HEARD strip when a command is understood.
 - **Listening:** a red dot with a slow 1.6 s opacity pulse (no scale).
-- **Timer done:** accent background with a 1 s opacity pulse until dismissed.
+- **Timer done:** a static accent ticket, "Time's up" and one Dismiss action. No pulse, and the clock stops being a live `timer` region, so nothing on screen claims to be counting. The header counts finished timers separately from running and paused ones.
 - **Reduced motion:** every animation becomes a ≤ 150 ms opacity change or none; the pulses become static.
 - **Animate only `transform` and `opacity`.**
 
 ## Microinteractions stance
 
-- **Success is silent.** A checked ingredient or a started timer just shows its new state. No celebratory toasts.
+- **Success is silent.** A checked ingredient or a started timer just shows its new state. No celebratory toasts. Typed input is the one exception: the custom-timer field keeps its confirmation beside the field and announces it once through a polite live region, so the app voice does not say the same sentence again.
 - **Command feedback is the HEARD strip.** It replaces floating toasts on the cooking screen: one place to look.
 - **Focus.** The ring shows instantly, 3 px ink, and never animates.
 - **Hover.** Hover is an enhancement only; no information lives in hover.
@@ -139,7 +139,7 @@ The wordmark (the mono label "CULINARY COMPANION" with a ticket-notch glyph), th
 - **md and up:** a top bar with the wordmark on the left and the same three links on the right. **No bottom bar on desktop.**
 - **Cooking mode** has no app nav: back arrow plus title only.
 - `/search` and `/recents` stay as routes. `/search` renders Recipes with the filter focused; `/recents` renders "In progress".
-- `/shopping` is the shopping list. It is deliberately **not** a fourth primary nav item: it is reached from a recipe's "Add all ingredients" action and from Recipes once the list has something on it.
+- `/shopping` is the shopping list. It is deliberately **not** a fourth primary nav item: it is reached from a recipe's "Add all ingredients" action and from Recipes once the list has something on it. A removal is recoverable: the status says Undo is available, the last removal keeps an Undo beside it, and Undo puts the entries back where they were without disturbing ticks or additions made since.
 
 ## Exports
 
