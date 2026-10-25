@@ -115,11 +115,31 @@ describe('shoppingListText', () => {
     expect(shoppingListText(list, findRecipe)).toBe(
       [
         'SHOPPING LIST',
-        'Alpha Stew\n[ ] 400 g Chickpeas (drained)\n[x] Salt',
-        'Beta Toast\n[ ] 2 slices Bread',
+        'Alpha Stew\n[ ] 400 g Chickpeas (drained)\n[x] Salt\nSource: Cookbook:Alpha_Stew — https://en.wikibooks.org/wiki/Cookbook:Alpha_Stew (revision: https://en.wikibooks.org/w/index.php?oldid=111) · CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/) · Changes: adapted into step-by-step format',
+        'Beta Toast\n[ ] 2 slices Bread\nSource: Cookbook:Beta_Toast — https://en.wikibooks.org/wiki/Cookbook:Beta_Toast (revision: https://en.wikibooks.org/w/index.php?oldid=111) · CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/) · Changes: adapted into step-by-step format',
         'Recipes adapted from the Wikibooks Cookbook (https://en.wikibooks.org/wiki/Cookbook:Table_of_Contents), CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/).',
       ].join('\n\n'),
     )
+  })
+
+  it('attributes each recipe to its own source, revision, licence and changes', () => {
+    const text = shoppingListText([entry('alpha-stew', 0), entry('beta-toast', 0)], findRecipe)
+    const [alpha, beta] = text.split('\n\n').slice(1, 3)
+    for (const [block, recipe] of [
+      [alpha, FULL],
+      [beta, BARE],
+    ] as const) {
+      expect(block).toContain(recipe.source.page)
+      expect(block).toContain(`Source: ${recipe.source.page} — ${recipe.source.url}`)
+      expect(block).toContain(`revision: ${recipe.source.revisionUrl}`)
+      expect(block).toContain(`${recipe.source.license} (${recipe.source.licenseUrl})`)
+      expect(block).toContain(`Changes: ${recipe.source.changes}`)
+    }
+    // Each group names only its own page, not the other one.
+    expect(alpha).toContain(FULL.source.url)
+    expect(alpha).not.toContain(BARE.source.url)
+    expect(beta).toContain(BARE.source.url)
+    expect(beta).not.toContain(FULL.source.url)
   })
 
   it('is empty when there is nothing to copy', () => {
