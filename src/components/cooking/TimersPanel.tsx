@@ -27,7 +27,10 @@ interface TimersPanelProps {
    * is already shown there as the control, so it is not repeated here.
    */
   stepChipVisible: boolean
+  /** Presets: the cook tapped a known duration, so the app voice confirms it. */
   onStartMinutes: (minutes: number) => void
+  /** Typed durations: the field's polite status is the one confirmation, so this path must not also speak. */
+  onStartTypedMinutes: (minutes: number) => void
   onStartStepTimer: () => void
   onToggle: (id: string) => void
   onReset: (id: string) => void
@@ -38,27 +41,32 @@ interface TimersPanelProps {
 function TimerRow({
   timer,
   now,
-  recipeId,
+  name,
+  label,
+  otherRecipe,
   onToggle,
   onReset,
   onRemove,
 }: {
   timer: KitchenTimer
   now: number
-  recipeId: string
+  /** Full accessible name: the row's label, its recipe when it belongs elsewhere, and a sequence when labels collide. */
+  name: string
+  /** Visible label: the timer's own label plus that sequence. */
+  label: string
+  otherRecipe?: string
   onToggle: (id: string) => void
   onReset: (id: string) => void
   onRemove: (id: string) => void
 }) {
   const running = isRunning(timer)
-  const otherRecipe = timer.recipeId && timer.recipeId !== recipeId ? getRecipeById(timer.recipeId)?.title : undefined
   const tone = timer.done ? 'bg-accent! text-accent-ink' : running ? 'border-l-4! border-l-accent!' : ''
   const labelTone = timer.done ? 'text-accent-ink!' : ''
   return (
     <li className={`ticket flex flex-col gap-2 px-3 py-2 ${tone}`}>
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <Label className={`block truncate ${labelTone}`}>{timer.label}</Label>
+          <Label className={`block truncate ${labelTone}`}>{label}</Label>
           {otherRecipe ? <Label className={`block truncate ${labelTone}`}>{otherRecipe}</Label> : null}
         </div>
         <p
@@ -69,7 +77,7 @@ function TimerRow({
         </p>
       </div>
       {timer.done ? (
-        <Button onClick={() => onRemove(timer.id)} aria-label={`Dismiss ${timer.label}`} className="min-h-14! w-full">
+        <Button onClick={() => onRemove(timer.id)} aria-label={`Dismiss ${name}`} className="min-h-14! w-full">
           Dismiss
         </Button>
       ) : (
@@ -78,17 +86,17 @@ function TimerRow({
             variant="secondary"
             size="lg"
             onClick={() => onToggle(timer.id)}
-            aria-label={`${running ? 'Pause' : 'Resume'} ${timer.label}`}
+            aria-label={`${running ? 'Pause' : 'Resume'} ${name}`}
             className="min-h-14! flex-1 px-2!"
           >
             {running ? <Pause className="size-5 shrink-0" strokeWidth={2} aria-hidden="true" /> : <Play className="size-5 shrink-0" strokeWidth={2} aria-hidden="true" />}
             <span>{running ? 'Pause' : 'Resume'}</span>
           </Button>
-          <Button variant="secondary" size="lg" onClick={() => onReset(timer.id)} aria-label={`Reset ${timer.label}`} className="min-h-14! flex-1 px-2!">
+          <Button variant="secondary" size="lg" onClick={() => onReset(timer.id)} aria-label={`Reset ${name}`} className="min-h-14! flex-1 px-2!">
             <RotateCcw className="size-5 shrink-0" strokeWidth={2} aria-hidden="true" />
             <span>Reset</span>
           </Button>
-          <Button variant="secondary" size="lg" onClick={() => onRemove(timer.id)} aria-label={`Remove ${timer.label}`} className="min-h-14! flex-1 px-2!">
+          <Button variant="secondary" size="lg" onClick={() => onRemove(timer.id)} aria-label={`Remove ${name}`} className="min-h-14! flex-1 px-2!">
             <Trash2 className="size-5 shrink-0" strokeWidth={2} aria-hidden="true" />
             <span>Remove</span>
           </Button>
@@ -98,11 +106,15 @@ function TimerRow({
   )
 }
 
-/** Any whole-minute duration, including the ones no preset covers. Validation and its message live with the field. */
+/**
+ * Any whole-minute duration, including the ones no preset covers. Validation and its message live with the field.
+ * The confirmation is the field's own polite status; CookingScreen does not speak it again, so a screen reader
+ * hears it once. Re-submitting the same duration replaces the status node (a new key), so it is announced again.
+ */
 function CustomTimer({ onStart }: { onStart: (minutes: number) => void }) {
   const [value, setValue] = useState('')
   const [error, setError] = useState('')
-  const [status, setStatus] = useState('')
+  const [status, setStatus] = useState<{ text: string; seq: number } | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
@@ -110,13 +122,16 @@ function CustomTimer({ onStart }: { onStart: (minutes: number) => void }) {
     const parsed = parseTimerMinutes(value)
     if ('error' in parsed) {
       setError(parsed.error)
-      setStatus('')
+      setStatus(null)
       inputRef.current?.focus()
       return
     }
     setError('')
     setValue('')
-    setStatus(`Timer set for ${parsed.minutes} ${parsed.minutes === 1 ? 'minute' : 'minutes'}.`)
+    setStatus((previous) => ({
+      text: `Timer set for ${parsed.minutes} ${parsed.minutes === 1 ? 'minute' : 'minutes'}.`,
+      seq: (previous?.seq ?? 0) + 1,
+    }))
     onStart(parsed.minutes)
   }
 
@@ -152,9 +167,9 @@ function CustomTimer({ onStart }: { onStart: (minutes: number) => void }) {
       <p id="custom-timer-error" role="alert" className={error ? 'font-bold text-accent' : 'sr-only'}>
         {error}
       </p>
-      <p aria-live="polite" className={status ? 'text-base font-bold text-ink' : 'sr-only'}>
-        {status}
-      </p>
+      <div aria-live="polite" className={status ? 'text-base font-bold text-ink' : 'sr-only'}>
+        <p key={status?.seq ?? 0}>{status?.text ?? ''}</p>
+      </div>
     </form>
   )
 }
@@ -168,6 +183,7 @@ export default function TimersPanel({
   stepNumber,
   stepChipVisible,
   onStartMinutes,
+  onStartTypedMinutes,
   onStartStepTimer,
   onToggle,
   onReset,
@@ -206,6 +222,23 @@ export default function TimersPanel({
       </div>
     </div>
   )
+  // Equal labels (two "7 min timer"s, or step 3 of two recipes) need distinct accessible names, so the
+  // controls still say which row they act on. The sequence is creation order, numbered only when it collides.
+  const labelCounts = new Map<string, number>()
+  for (const timer of rows) labelCounts.set(timer.label, (labelCounts.get(timer.label) ?? 0) + 1)
+  const seen = new Map<string, number>()
+  const namedRows = rows.map((timer) => {
+    const ordinal = (seen.get(timer.label) ?? 0) + 1
+    seen.set(timer.label, ordinal)
+    const otherRecipe = timer.recipeId && timer.recipeId !== recipeId ? getRecipeById(timer.recipeId)?.title : undefined
+    const sequence = (labelCounts.get(timer.label) ?? 1) > 1 ? ` (${ordinal})` : ''
+    return {
+      timer,
+      label: `${timer.label}${sequence}`,
+      otherRecipe,
+      name: `${timer.label}${sequence}${otherRecipe ? ` — ${otherRecipe}` : ''}`,
+    }
+  })
   return (
     <section aria-label="Timers">
       <Ticket
@@ -217,10 +250,20 @@ export default function TimersPanel({
         }
         bodyClassName="flex flex-col gap-3 p-2 sm:p-3"
       >
-        {rows.length > 0 ? (
+        {namedRows.length > 0 ? (
           <ul className="flex flex-col gap-2">
-            {rows.map((timer) => (
-              <TimerRow key={timer.id} timer={timer} now={now} recipeId={recipeId} onToggle={onToggle} onReset={onReset} onRemove={onRemove} />
+            {namedRows.map(({ timer, label, otherRecipe, name }) => (
+              <TimerRow
+                key={timer.id}
+                timer={timer}
+                now={now}
+                label={label}
+                otherRecipe={otherRecipe}
+                name={name}
+                onToggle={onToggle}
+                onReset={onReset}
+                onRemove={onRemove}
+              />
             ))}
           </ul>
         ) : null}
@@ -241,7 +284,7 @@ export default function TimersPanel({
           </>
         )}
         {/* Outside the collapse: the typed field and its confirmation must survive the first timer starting. */}
-        <CustomTimer onStart={onStartMinutes} />
+        <CustomTimer onStart={onStartTypedMinutes} />
       </Ticket>
     </section>
   )

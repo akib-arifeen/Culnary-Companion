@@ -133,7 +133,7 @@ function CookingSession({ recipe }: { recipe: Recipe }) {
     }
   }
 
-  const startTimer = (minutesArg?: number) => {
+  const startTimer = (minutesArg?: number, announce = true) => {
     const number = state.stepIndex + 1
     const current = recipe.steps[state.stepIndex]
     // A timer is only ever backed by a time the step states (or a time the cook gives outright).
@@ -149,6 +149,7 @@ function CookingSession({ recipe }: { recipe: Recipe }) {
     const id = timers.start(
       minutesArg === undefined ? { label: `Step ${number}`, minutes, stepNumber: number, recipeId: recipe.id } : { label: `${minutes} min timer`, minutes },
     )
+    if (!announce) return
     speak(
       id === ''
         ? 'I couldn’t set that timer.'
@@ -453,6 +454,7 @@ function CookingSession({ recipe }: { recipe: Recipe }) {
       stepNumber={stepNumber}
       stepChipVisible={layout !== 'tabs'}
       onStartMinutes={startTimer}
+      onStartTypedMinutes={(minutes) => startTimer(minutes, false)}
       onStartStepTimer={() => run({ type: 'startTimer' }, 'tap')}
       onToggle={timers.toggle}
       onReset={timers.reset}

@@ -60,11 +60,14 @@ export function useShoppingList() {
     if (next !== stored) writeJSON(PREF_KEYS.shoppingList, next)
   }, [current])
 
+  /** Puts removed entries back; false when there was nothing to restore (so callers do not move focus for nothing). */
   const restoreRemoved = useCallback(
     (snapshot: readonly ShoppingEntry[], removedKeys: readonly string[]) => {
       const stored = current()
       const next = restoreShoppingItems(stored, snapshot, new Set(removedKeys))
-      if (next !== stored) writeJSON(PREF_KEYS.shoppingList, next)
+      if (next === stored) return false
+      writeJSON(PREF_KEYS.shoppingList, next)
+      return true
     },
     [current],
   )

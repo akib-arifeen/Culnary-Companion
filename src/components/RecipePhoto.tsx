@@ -30,12 +30,10 @@ export default function RecipePhoto({ photo, className = '', responsive = false,
       <div
         role="img"
         aria-label={`${label}: ${photo.alt}`}
-        className={`flex flex-col items-center justify-center gap-1.5 bg-paper-2 p-2 text-center text-ink-2 ${className}`}
+        className={`flex flex-col items-center justify-center bg-paper-2 text-center text-ink-2 ${compact ? 'gap-1 p-1' : 'gap-1.5 p-2'} ${className}`}
       >
-        <ImageOff className={compact ? 'size-5' : 'size-6'} strokeWidth={2} aria-hidden="true" />
-        <span className={`font-mono font-semibold uppercase tracking-wide ${compact ? 'text-[0.6rem] leading-tight' : 'text-xs'}`}>
-          {label}
-        </span>
+        <ImageOff className={compact ? 'size-4' : 'size-6'} strokeWidth={2} aria-hidden="true" />
+        <span className="label-mono">{label}</span>
       </div>
     )
   }

@@ -73,7 +73,11 @@ export default function ShoppingListScreen() {
       label: `Undo removing ${name} from the shopping list`,
       done: `Restored ${name} to the shopping list.`,
     })
-    setStatus(ingredient ? `Removed ${ingredient.name} from the shopping list.` : '')
+    setStatus(
+      ingredient
+        ? `Removed ${ingredient.name} from the shopping list. Undo is available.`
+        : 'Removed an item from the shopping list. Undo is available.',
+    )
     removeItem(entry.recipeId, entry.index)
   }
 
@@ -89,15 +93,17 @@ export default function ShoppingListScreen() {
       label: `Undo removing ${nouns}`,
       done: `Restored ${nouns} to the shopping list.`,
     })
-    setStatus(`Removed ${nouns}.`)
+    setStatus(`Removed ${nouns}. Undo is available.`)
     removeChecked()
   }
 
   const undoRemoval = () => {
     if (!undo) return
-    pendingFocus.current = undo.firstKey ?? 'title'
-    restoreRemoved(undo.snapshot, undo.keys)
-    setStatus(undo.done)
+    const restored = restoreRemoved(undo.snapshot, undo.keys)
+    // Only arm the focus move when something actually comes back; a no-op restore must not make a
+    // later list change (a tick, another removal) jump focus to a row the cook is not touching.
+    pendingFocus.current = restored ? undo.firstKey ?? 'title' : null
+    setStatus(restored ? undo.done : 'Nothing to restore; the items are already back.')
     setUndo(null)
   }
 
