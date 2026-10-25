@@ -10,6 +10,7 @@ import {
   settleTimer,
   formatClock,
   formatSpokenDuration,
+  parseTimerMinutes,
 } from './timers'
 
 const T0 = 1_000_000
@@ -251,5 +252,26 @@ describe('formatSpokenDuration', () => {
   it('rounds up to whole seconds', () => {
     expect(formatSpokenDuration(44_001)).toBe('45 seconds')
     expect(formatSpokenDuration(1)).toBe('1 second')
+  })
+})
+
+describe('parseTimerMinutes', () => {
+  it('accepts whole minutes in the timer range', () => {
+    expect(parseTimerMinutes('7')).toEqual({ minutes: 7 })
+    expect(parseTimerMinutes(' 1 ')).toEqual({ minutes: 1 })
+    expect(parseTimerMinutes('180')).toEqual({ minutes: 180 })
+  })
+
+  it('rejects empty, fractional, negative, non-numeric and out-of-range input with a sentence', () => {
+    for (const value of ['', '  ', '0', '181', '2.5', '-3', 'seven', '7 min']) {
+      const result = parseTimerMinutes(value)
+      expect('error' in result, value).toBe(true)
+      if ('error' in result) expect(result.error.length).toBeGreaterThan(10)
+    }
+  })
+
+  it('names the accepted range in the out-of-range message', () => {
+    const result = parseTimerMinutes('181')
+    expect('error' in result && result.error).toMatch(/1 to 180/)
   })
 })

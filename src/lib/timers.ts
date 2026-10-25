@@ -19,7 +19,11 @@ export interface KitchenTimer {
   readonly recipeId?: string
 }
 
-/** minutes must be > 0. autoStart defaults to true. */
+/** The whole-minute range every timer control and the voice grammar agree on. */
+export const MIN_TIMER_MINUTES = 1
+export const MAX_TIMER_MINUTES = 180
+
+/** Minutes must be > 0. autoStart defaults to true. */
 export function createTimer(opts: {
   id: string
   label: string
@@ -94,6 +98,21 @@ export function formatClock(ms: number): string {
   const s = total % 60
   const ss = String(s).padStart(2, '0')
   return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${ss}` : `${m}:${ss}`
+}
+
+/**
+ * Whole minutes typed into the custom timer field, or the sentence to show when the value is not
+ * one. Kept out of the component so the rule can be tested directly and matches TimerContext.start.
+ */
+export function parseTimerMinutes(value: string): { minutes: number } | { error: string } {
+  const trimmed = value.trim()
+  if (!trimmed) return { error: 'Enter a number of minutes.' }
+  if (!/^\d+$/.test(trimmed)) return { error: `Use whole minutes from ${MIN_TIMER_MINUTES} to ${MAX_TIMER_MINUTES}, like 7.` }
+  const minutes = Number(trimmed)
+  if (minutes < MIN_TIMER_MINUTES || minutes > MAX_TIMER_MINUTES) {
+    return { error: `Use whole minutes from ${MIN_TIMER_MINUTES} to ${MAX_TIMER_MINUTES}.` }
+  }
+  return { minutes }
 }
 
 /** Spoken form for TTS: "7 minutes", "1 minute", "1 minute 30 seconds", "45 seconds", "1 hour 5 minutes". Rounds up to seconds. */

@@ -452,7 +452,7 @@ function CookingSession({ recipe }: { recipe: Recipe }) {
       stepDuration={stepTimer || layout !== 'tabs' ? undefined : step.duration}
       stepNumber={stepNumber}
       stepChipVisible={layout !== 'tabs'}
-      onStartPreset={startTimer}
+      onStartMinutes={startTimer}
       onStartStepTimer={() => run({ type: 'startTimer' }, 'tap')}
       onToggle={timers.toggle}
       onReset={timers.reset}
