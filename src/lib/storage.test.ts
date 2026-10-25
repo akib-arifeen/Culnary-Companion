@@ -74,6 +74,18 @@ describe('readJSON / writeJSON', () => {
     expect(readJSON(key, 0)).toBe(2)
   })
 
+  it('keeps the newest value when persisting it failed, even though storage still holds an older one', () => {
+    const key = freshKey()
+    writeJSON(key, 'old')
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('quota')
+    })
+    writeJSON(key, 'new')
+    // The failed write left the old value in storage; reads must still see the newer in-memory one.
+    expect(localStorage.getItem(key)).toBe('"old"')
+    expect(readJSON(key, 'fallback')).toBe('new')
+  })
+
   describe('when localStorage throws', () => {
     beforeEach(() => {
       vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {

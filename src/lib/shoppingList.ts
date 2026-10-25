@@ -109,6 +109,15 @@ function ingredientLine(recipe: Recipe, entry: ShoppingEntry): string {
 }
 
 /**
+ * CC BY-SA asks for the source, the revision adapted and what changed, per work — not just a
+ * collection-wide credit. Each recipe group carries its own line so the pasted list is attributable.
+ */
+function attributionLine(recipe: Recipe): string {
+  const { page, url, revisionUrl, license, licenseUrl, changes } = recipe.source
+  return `Source: ${page} — ${url} (revision: ${revisionUrl}) · ${license} (${licenseUrl}) · Changes: ${changes}`
+}
+
+/**
  * The plain-text view, for the clipboard or manual copying. Ingredient text is copied verbatim
  * from the recipe; the source credit travels with it because the recipes are CC BY-SA 4.0.
  */
@@ -116,7 +125,7 @@ export function shoppingListText(list: readonly ShoppingEntry[], findRecipe: Rec
   const groups = groupShoppingList(list, findRecipe)
   if (groups.length === 0) return ''
   const blocks = groups.map(({ recipe, entries }) =>
-    [recipe.title, ...entries.map((entry) => ingredientLine(recipe, entry))].join('\n'),
+    [recipe.title, ...entries.map((entry) => ingredientLine(recipe, entry)), attributionLine(recipe)].join('\n'),
   )
   return [
     'SHOPPING LIST',

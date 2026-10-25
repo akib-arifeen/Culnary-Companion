@@ -79,6 +79,15 @@ vi.mock('../data/recipes', () => {
       photo,
       source,
     },
+    {
+      id: 'fixture-salmon',
+      title: 'Fixture salmon',
+      summary: 'A fillet.',
+      ingredients: [{ name: 'Salmon', quantity: '2 fillets' }],
+      steps: steps([['Pan fry the salmon for 2–3 minutes per side.', 3], ['Serve with lemon.']]),
+      photo,
+      source,
+    },
   ]
   return { recipes, getRecipeById: (id: string) => recipes.find((r) => r.id === id) }
 })
@@ -273,14 +282,74 @@ describe('CookingScreen', () => {
     expect(screen.getByRole('status').textContent).toContain('Didn’t catch “purple monkey”')
   })
 
+  it('jumps to a spoken step number that exists', () => {
+    renderAt('/cooking/fixture-curry')
+    act(() => fakes.onTranscript?.('go to step 4'))
+    expect(screen.getByText(`Step 4 of ${stepCount}`)).toBeTruthy()
+  })
+
+  it('a spoken step number past the end says so, with the range, instead of silently doing nothing', () => {
+    renderAt('/cooking/fixture-curry')
+    act(() => fakes.onTranscript?.('go to step 9'))
+    expect(screen.getByText(`Step 1 of ${stepCount}`)).toBeTruthy()
+    expect(screen.getByRole('status').textContent).toContain(`There is no step 9. This recipe has ${stepCount} steps (1–${stepCount}).`)
+    expect(fakes.speak).toHaveBeenCalledWith(`There is no step 9. This recipe has ${stepCount} steps (1–${stepCount}).`)
+  })
+
   it('starts a step timer from the keyboard and shows it in the Timers tab badge', async () => {
     const user = userEvent.setup()
     renderAt('/cooking/fixture-curry')
+    await user.keyboard('n') // step 2 states "for 6 minutes"
     await user.keyboard('t')
     expect(screen.getByRole('tab', { name: /^Timers\s*1\s*running$/ })).toBeTruthy()
     expect(fakes.speak).toHaveBeenCalledWith(expect.stringMatching(/^Timer set for/))
     await user.click(screen.getByRole('tab', { name: /timers/i }))
-    expect(screen.getByRole('button', { name: /^Pause Step 1$/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /^Pause Step 2$/ })).toBeTruthy()
+  })
+
+  // A timer must be backed by a time the step states. No stated time means no timer, in every input method,
+  // plus a spoken and visible way to give one.
+  it('a step with no stated time starts no timer from the keyboard and says how to set one', async () => {
+    const user = userEvent.setup()
+    renderAt('/cooking/fixture-curry')
+    await user.keyboard('t')
+    expect(screen.getByRole('tab', { name: /^Timers$/ })).toBeTruthy()
+    expect(screen.getByRole('status').textContent).toContain('Step 1 doesn’t state a time')
+    expect(screen.getByRole('status').textContent).toContain('set a timer for 10 minutes')
+    expect(fakes.speak).toHaveBeenCalledWith(expect.stringContaining('doesn’t state a time'))
+    expect(fakes.speak).not.toHaveBeenCalledWith(expect.stringContaining('Timer set for'))
+  })
+
+  it('a step with no stated time starts no timer from voice and says how to set one', () => {
+    renderAt('/cooking/fixture-curry')
+    act(() => fakes.onTranscript?.('start timer'))
+    expect(screen.getByRole('tab', { name: /^Timers$/ })).toBeTruthy()
+    expect(screen.getByRole('status').textContent).toContain('doesn’t state a time')
+    expect(fakes.speak).toHaveBeenCalledWith(expect.stringContaining('set a timer for 10 minutes'))
+  })
+
+  it('a step with no stated time starts no timer from a hand gesture and says how to set one', () => {
+    renderAt('/cooking/fixture-curry')
+    act(() => fakes.onGesture?.('Pointing_Up'))
+    expect(screen.getByRole('tab', { name: /^Timers$/ })).toBeTruthy()
+    expect(screen.getByRole('status').textContent).toContain('doesn’t state a time')
+  })
+
+  it('an explicit time still starts a timer on a step that states none', () => {
+    renderAt('/cooking/fixture-curry')
+    act(() => fakes.onTranscript?.('set a timer for 7 minutes'))
+    expect(fakes.speak).toHaveBeenCalledWith('Timer set for 7 minutes.')
+    expect(screen.getByRole('tab', { name: /^Timers\s*1\s*running$/ })).toBeTruthy()
+  })
+
+  it('a per-side step says "per side" on the chip and in the confirmation, as one timer', async () => {
+    const user = userEvent.setup()
+    renderAt('/cooking/fixture-salmon')
+    await user.click(screen.getByRole('button', { name: 'Start 3-min timer (per side)' }))
+    expect(fakes.speak).toHaveBeenCalledWith('Timer set for 3 minutes per side.')
+    expect(screen.getByRole('button', { name: /^3:00.*Pause step timer/ })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: /^Timers\s*1\s*running$/ })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /^Start .*-min timer/ })).toBeNull()
   })
 
   it('checks an ingredient by voice', () => {
@@ -314,11 +383,13 @@ describe('CookingScreen', () => {
   it('keeps step timers of different recipes apart and labels the other recipe', async () => {
     const user = userEvent.setup()
     renderAt('/cooking/fixture-curry')
+    await user.keyboard('n') // both recipes state a time on step 2
     await user.keyboard('t')
     await user.click(screen.getByRole('button', { name: 'go to /cooking/fixture-soup' }))
+    await user.keyboard('n')
     await user.keyboard('t')
     await user.click(screen.getByRole('tab', { name: /timers/i }))
-    expect(screen.getAllByRole('button', { name: /^Pause Step 1$/ })).toHaveLength(2)
+    expect(screen.getAllByRole('button', { name: /^Pause Step 2$/ })).toHaveLength(2)
     expect(screen.getByText(recipe.title)).toBeTruthy()
   })
 

@@ -120,8 +120,8 @@ describe('ShoppingListScreen', () => {
     expect(writeText).toHaveBeenCalledWith(
       [
         'SHOPPING LIST',
-        'Alpha Stew\n[x] 400 g Chickpeas (drained)\n[ ] Salt',
-        'Beta Toast\n[x] 2 slices Bread',
+        'Alpha Stew\n[x] 400 g Chickpeas (drained)\n[ ] Salt\nSource: Cookbook:Alpha_Stew — https://en.wikibooks.org/wiki/Cookbook:Alpha_Stew (revision: https://en.wikibooks.org/w/index.php?oldid=111) · CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/) · Changes: adapted into step-by-step format',
+        'Beta Toast\n[x] 2 slices Bread\nSource: Cookbook:Beta_Toast — https://en.wikibooks.org/wiki/Cookbook:Beta_Toast (revision: https://en.wikibooks.org/w/index.php?oldid=111) · CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/) · Changes: adapted into step-by-step format',
         'Recipes adapted from the Wikibooks Cookbook (https://en.wikibooks.org/wiki/Cookbook:Table_of_Contents), CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/).',
       ].join('\n\n'),
     )
@@ -139,6 +139,10 @@ describe('ShoppingListScreen', () => {
     expect(plain.value).toContain('Alpha Stew\n[x] 400 g Chickpeas (drained)\n[ ] Salt')
     expect(plain.value).toContain('Beta Toast\n[x] 2 slices Bread')
     expect(plain.value).toContain('CC BY-SA 4.0')
+    // The selectable fallback carries the same per-recipe attribution as the clipboard text.
+    expect(plain.value).toContain('Source: Cookbook:Alpha_Stew — https://en.wikibooks.org/wiki/Cookbook:Alpha_Stew')
+    expect(plain.value).toContain('Source: Cookbook:Beta_Toast — https://en.wikibooks.org/wiki/Cookbook:Beta_Toast')
+    expect(plain.value).toContain('revision: https://en.wikibooks.org/w/index.php?oldid=111')
     expect(document.activeElement).toBe(plain)
     expect(plain.selectionStart).toBe(0)
     expect(plain.selectionEnd).toBe(plain.value.length)

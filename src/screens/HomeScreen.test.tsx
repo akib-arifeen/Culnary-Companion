@@ -56,6 +56,18 @@ describe('HomeScreen (Recipes)', () => {
     expect(screen.queryByText('Pick up where you left off')).toBeNull()
   })
 
+  it('discards one recipe from the pick-up ticket on Recipes, leaving the others', async () => {
+    window.localStorage.setItem(PREF_KEYS.progress, JSON.stringify({ 'alpha-stew': 1, 'beta-toast': 0 }))
+    renderHome()
+    expect(screen.getAllByRole('button', { name: /^Discard progress on / })).toHaveLength(2)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Discard progress on Alpha Stew' }))
+
+    expect(screen.queryByRole('button', { name: 'Discard progress on Alpha Stew' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Discard progress on Beta Toast' })).toBeTruthy()
+    expect(JSON.parse(window.localStorage.getItem(PREF_KEYS.progress) ?? '{}')).toEqual({ 'beta-toast': 0 })
+  })
+
   it('shows a clear button only when the filter has text, and it empties and refocuses the filter', async () => {
     renderHome()
     expect(screen.queryByRole('button', { name: 'Clear filter' })).toBeNull()

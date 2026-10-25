@@ -85,7 +85,7 @@ const SettingsScreen = () => {
           <ul className="divide-y divide-dashed divide-rule">
             <SwitchRow
               label="Voice commands"
-              description="Say next, back, repeat or set a timer. Asks for microphone access when you turn it on."
+              description="Say next, back, repeat or set a timer. The microphone is requested when you start cooking with voice on, not here."
               checked={voice}
               onChange={setVoice}
             />
