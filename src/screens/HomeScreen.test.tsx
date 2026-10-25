@@ -68,6 +68,19 @@ describe('HomeScreen (Recipes)', () => {
     expect(within(screen.getByRole('list', { name: 'Recipes' })).getAllByRole('link')).toHaveLength(2)
   })
 
+  it('links to the shopping list only when it has items', () => {
+    renderHome()
+    expect(screen.queryByRole('link', { name: /shopping list/i })).toBeNull()
+    cleanup()
+
+    window.localStorage.setItem(
+      PREF_KEYS.shoppingList,
+      JSON.stringify([{ recipeId: 'alpha-stew', index: 0, checked: false }]),
+    )
+    renderHome()
+    expect(screen.getByRole('link', { name: 'Shopping list · 1 item' }).getAttribute('href')).toBe('/shopping')
+  })
+
   it('narrows the rail when typing in the filter', async () => {
     renderHome()
     await userEvent.type(screen.getByLabelText(/filter by title/i), 'bread')

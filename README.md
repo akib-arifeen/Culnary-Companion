@@ -22,6 +22,7 @@ Screenshots are from automated browser runs, where the "camera" is a looped vide
 - Control it by tapping, with the keyboard, by voice, or with hand gestures. Every method triggers the same commands.
 - Kitchen timers that keep running when you leave the cooking screen. They chime when they finish, and the cooking screen also announces them aloud.
 - Saved recipes and per-recipe progress, kept in your browser.
+- A shopping list: add every ingredient from a recipe, tick items off in the shop, and copy the list as plain text. It stays in your browser, separate from the cooking checklist.
 - A short hands-free tutorial with live gesture practice, and a help sheet you can open at any time.
 
 ## Design
@@ -88,7 +89,7 @@ Nothing asks for the camera or microphone until you turn gestures or voice on. I
 
 ## Privacy
 
-Gesture recognition runs in your browser and camera video never leaves your device. Voice commands use the browser's speech service; in Chrome this sends your audio to Google. Saved recipes, progress and settings are stored in your browser's local storage only. There is no account and no backend.
+Gesture recognition runs in your browser and camera video never leaves your device. Voice commands use the browser's speech service; in Chrome this sends your audio to Google. Saved recipes, progress, settings and your shopping list are stored in your browser's local storage only. There is no account and no backend.
 
 ## Browser support
 
@@ -138,7 +139,7 @@ Every input becomes a `Command`, and the cooking screen handles commands in exac
 
 ### Testing
 
-There are over 900 automated tests (`npm test`) covering the voice grammar, the gesture stabilizer, timers, the media hooks, the screens, and the recipe content itself. The content tests check that every timer is backed by a time the step text states, and that every photo is self-hosted and carries a free licence and credit. The core logic was also mutation-tested: deliberately planted bugs were run against the suite, and tests were added for the ones it missed. On top of that, browser probes ran in Chromium with fake camera and microphone devices. They covered real MediaPipe recognition of all six gestures from photos, voice through a stand-in for the browser speech service, the permission-denied UI, and a cross-origin iframe with and without camera and microphone permission.
+There are over 950 automated tests (`npm test`) covering the voice grammar, the gesture stabilizer, timers, the media hooks, the screens, the shopping list, and the recipe content itself. The content tests check that every timer is backed by a time the step text states, and that every photo is self-hosted and carries a free licence and credit. The core logic was also mutation-tested: deliberately planted bugs were run against the suite, and tests were added for the ones it missed. On top of that, browser probes ran in Chromium with fake camera and microphone devices. They covered real MediaPipe recognition of all six gestures from photos, voice through a stand-in for the browser speech service, the permission-denied UI, and a cross-origin iframe with and without camera and microphone permission.
 
 ## Tech stack
 

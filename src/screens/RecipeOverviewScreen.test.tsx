@@ -124,6 +124,51 @@ describe('RecipeOverviewScreen (Full ticket)', () => {
     expect(readJSON(PREF_KEYS.favorites, ['x'])).toEqual([])
   })
 
+  it('adds all ingredients to the shopping list, preserving their order, and links to the list', async () => {
+    renderAt('/recipe/alpha-stew')
+    expect(screen.queryByRole('link', { name: /shopping list/i })).toBeNull()
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Add all ingredients from Alpha Stew to the shopping list' }),
+    )
+    expect(readJSON(PREF_KEYS.shoppingList, [])).toEqual([
+      { recipeId: 'alpha-stew', index: 0, checked: false },
+      { recipeId: 'alpha-stew', index: 1, checked: false },
+    ])
+    expect(screen.getByRole('status').textContent).toBe('Added 2 ingredients to the shopping list.')
+    expect(screen.getByRole('link', { name: 'Open shopping list' }).getAttribute('href')).toBe('/shopping')
+    expect(screen.queryByRole('button', { name: /add all ingredients/i })).toBeNull()
+  })
+
+  it('adds only the missing ingredients and keeps ticks already on the list', async () => {
+    window.localStorage.setItem(
+      PREF_KEYS.shoppingList,
+      JSON.stringify([{ recipeId: 'alpha-stew', index: 0, checked: true }]),
+    )
+    renderAt('/recipe/alpha-stew')
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Add all ingredients from Alpha Stew to the shopping list' }),
+    )
+    expect(readJSON(PREF_KEYS.shoppingList, [])).toEqual([
+      { recipeId: 'alpha-stew', index: 0, checked: true },
+      { recipeId: 'alpha-stew', index: 1, checked: false },
+    ])
+    expect(screen.getByRole('status').textContent).toBe('Added 1 ingredient to the shopping list.')
+  })
+
+  it('offers the list instead of the add button once every ingredient is on it', async () => {
+    window.localStorage.setItem(
+      PREF_KEYS.shoppingList,
+      JSON.stringify([
+        { recipeId: 'alpha-stew', index: 0, checked: false },
+        { recipeId: 'alpha-stew', index: 1, checked: true },
+      ]),
+    )
+    renderAt('/recipe/alpha-stew')
+    expect(screen.queryByRole('button', { name: /add all ingredients/i })).toBeNull()
+    expect(screen.getByRole('link', { name: 'Open shopping list' }).getAttribute('href')).toBe('/shopping')
+    expect(screen.getByRole('status').textContent).toBe('')
+  })
+
   it('shows a not-found state with a way back', () => {
     renderAt('/recipe/does-not-exist')
     expect(screen.getByRole('heading', { level: 1, name: 'Recipe not found' })).toBeTruthy()

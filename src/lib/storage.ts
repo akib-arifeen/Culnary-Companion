@@ -14,6 +14,8 @@ export const PREF_KEYS = {
   onboarded: 'cc.onboarded',
   favorites: 'cc.favorites',
   progress: 'cc.progress',
+  /** Pre-cooking shopping list. Separate from the in-session cooking checklist. */
+  shoppingList: 'cc.shoppingList',
 } as const
 
 export type PrefKey = (typeof PREF_KEYS)[keyof typeof PREF_KEYS]

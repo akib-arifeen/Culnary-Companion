@@ -9,6 +9,7 @@ import { getRecipeById, recipes } from '../data/recipes'
 import type { Recipe } from '../data/types'
 import { useRecipeContext } from '../context/RecipeContext'
 import { PREF_DEFAULTS, PREF_KEYS, usePref } from '../lib/storage'
+import { useShoppingList } from '../hooks/useShoppingList'
 
 /** Every word typed must appear in the title, category or an ingredient name. */
 function matches(recipe: Recipe, words: readonly string[]): boolean {
@@ -19,6 +20,7 @@ function matches(recipe: Recipe, words: readonly string[]): boolean {
 /** Recipes ("The Rail"). `/search` renders this with the filter focused. */
 const HomeScreen = ({ focusFilter = false }: { focusFilter?: boolean }) => {
   const { inProgress } = useRecipeContext()
+  const { items: shoppingItems } = useShoppingList()
   const [voiceOn] = usePref<boolean>(PREF_KEYS.voice, PREF_DEFAULTS[PREF_KEYS.voice])
   const [gesturesOn] = usePref<boolean>(PREF_KEYS.gestures, PREF_DEFAULTS[PREF_KEYS.gestures])
   const [query, setQuery] = useState('')
@@ -90,6 +92,16 @@ const HomeScreen = ({ focusFilter = false }: { focusFilter?: boolean }) => {
             Set up
           </Link>
         </p>
+        {shoppingItems.length > 0 ? (
+          <p className="label-mono mt-1">
+            <Link
+              to="/shopping"
+              className="inline-flex min-h-11 items-center text-ink underline decoration-2 underline-offset-3 hover:decoration-accent"
+            >
+              Shopping list · {shoppingItems.length} {shoppingItems.length === 1 ? 'item' : 'items'}
+            </Link>
+          </p>
+        ) : null}
       </div>
 
       {resuming.length > 0 && (
