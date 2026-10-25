@@ -76,6 +76,27 @@ export function removeCheckedItems(list: readonly ShoppingEntry[]): ShoppingEntr
   return next.length === list.length ? (list as ShoppingEntry[]) : next
 }
 
+/**
+ * Puts removed entries back where they were, for the shopping list's Undo. `snapshot` is the list
+ * as it stood before the removal; `removedKeys` marks which entries went. Entries still on the
+ * list keep their current state, and anything added since the removal stays put.
+ */
+export function restoreShoppingItems(
+  current: readonly ShoppingEntry[],
+  snapshot: readonly ShoppingEntry[],
+  removedKeys: ReadonlySet<string>,
+): ShoppingEntry[] {
+  const present = new Set(current.map((entry) => shoppingKey(entry.recipeId, entry.index)))
+  const next = [...current]
+  for (const [position, entry] of snapshot.entries()) {
+    const key = shoppingKey(entry.recipeId, entry.index)
+    if (!removedKeys.has(key) || present.has(key)) continue
+    next.splice(Math.min(position, next.length), 0, entry)
+    present.add(key)
+  }
+  return next.length === current.length ? (current as ShoppingEntry[]) : next
+}
+
 /** Ingredients of one recipe that are on the list (checked or not). */
 export function countForRecipe(list: readonly ShoppingEntry[], recipeId: string): number {
   return list.filter((entry) => entry.recipeId === recipeId).length

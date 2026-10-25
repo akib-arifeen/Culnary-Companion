@@ -110,6 +110,47 @@ describe('ShoppingListScreen', () => {
     expect(screen.getByRole('status').textContent).toBe('Removed 2 checked items.')
   })
 
+  it('offers Undo after removing one item and puts it back in place, focused', async () => {
+    const before = [entry('alpha-stew', 0), entry('alpha-stew', 1)]
+    store(before)
+    renderList()
+    await userEvent.click(screen.getByRole('button', { name: 'Remove Chickpeas, 400 g from the shopping list' }))
+    expect(screen.queryByText('Chickpeas')).toBeNull()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Undo removing Chickpeas from the shopping list' }))
+    expect(readJSON<ShoppingEntry[]>(PREF_KEYS.shoppingList, [])).toEqual(before)
+    expect(screen.getByText('Chickpeas')).toBeTruthy()
+    expect(screen.getByRole('status').textContent).toBe('Restored Chickpeas to the shopping list.')
+    expect(screen.queryByRole('button', { name: /undo removing/i })).toBeNull()
+    expect(document.activeElement).toBe(screen.getByRole('checkbox', { name: /Chickpeas/ }))
+  })
+
+  it('offers Undo after Remove checked and restores every removed tick', async () => {
+    const before = [entry('alpha-stew', 0, true), entry('alpha-stew', 1), entry('beta-toast', 0, true)]
+    store(before)
+    renderList()
+    await userEvent.click(screen.getByRole('button', { name: 'Remove checked' }))
+    expect(screen.queryByText('Chickpeas')).toBeNull()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Undo removing 2 checked items' }))
+    expect(readJSON<ShoppingEntry[]>(PREF_KEYS.shoppingList, [])).toEqual(before)
+    expect(screen.getByRole('status').textContent).toBe('Restored 2 checked items to the shopping list.')
+    expect(document.activeElement).toBe(screen.getByRole('checkbox', { name: /Chickpeas/ }))
+  })
+
+  it('keeps Undo available when the last item is removed, so the empty list is recoverable', async () => {
+    store([entry('alpha-stew', 0)])
+    renderList()
+    await userEvent.click(screen.getByRole('button', { name: 'Remove Chickpeas, 400 g from the shopping list' }))
+    expect(screen.getByRole('heading', { name: 'Nothing on the list yet' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Undo removing Chickpeas from the shopping list' })).toBeTruthy()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Undo removing Chickpeas from the shopping list' }))
+    expect(readJSON<ShoppingEntry[]>(PREF_KEYS.shoppingList, [])).toEqual([entry('alpha-stew', 0)])
+    expect(screen.queryByRole('heading', { name: 'Nothing on the list yet' })).toBeNull()
+    expect(document.activeElement).toBe(screen.getByRole('checkbox', { name: /Chickpeas/ }))
+  })
+
   it('copies the plain list exactly when the clipboard is available', async () => {
     store(THREE_ITEMS)
     const writeText = vi.fn().mockResolvedValue(undefined)

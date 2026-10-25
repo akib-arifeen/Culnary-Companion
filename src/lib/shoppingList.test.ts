@@ -7,6 +7,7 @@ import {
   groupShoppingList,
   removeCheckedItems,
   removeShoppingItem,
+  restoreShoppingItems,
   setShoppingChecked,
   shoppingKey,
   shoppingListText,
@@ -82,6 +83,38 @@ describe('removeShoppingItem / removeCheckedItems', () => {
     expect(removeCheckedItems(list)).toEqual([entry('alpha-stew', 1)])
     const none = [entry('alpha-stew', 0)]
     expect(removeCheckedItems(none)).toBe(none)
+  })
+})
+
+describe('restoreShoppingItems', () => {
+  const key = (e: ShoppingEntry) => shoppingKey(e.recipeId, e.index)
+
+  it('puts one removed entry back in its original position, with its tick', () => {
+    const snapshot = [entry('alpha-stew', 0, true), entry('alpha-stew', 1), entry('beta-toast', 0)]
+    const afterRemoval = removeShoppingItem(snapshot, 'alpha-stew', 0)
+    expect(restoreShoppingItems(afterRemoval, snapshot, new Set([key(snapshot[0])]))).toEqual(snapshot)
+  })
+
+  it('puts every checked entry back in place after a bulk removal', () => {
+    const snapshot = [entry('alpha-stew', 0, true), entry('alpha-stew', 1), entry('beta-toast', 0, true)]
+    const afterRemoval = removeCheckedItems(snapshot)
+    expect(restoreShoppingItems(afterRemoval, snapshot, new Set([key(snapshot[0]), key(snapshot[2])]))).toEqual(snapshot)
+  })
+
+  it('keeps entries added and ticks changed after the removal', () => {
+    const snapshot = [entry('alpha-stew', 0), entry('alpha-stew', 1)]
+    const afterRemoval = [entry('alpha-stew', 1, true), entry('beta-toast', 0)]
+    expect(restoreShoppingItems(afterRemoval, snapshot, new Set([key(snapshot[0])]))).toEqual([
+      entry('alpha-stew', 0),
+      entry('alpha-stew', 1, true),
+      entry('beta-toast', 0),
+    ])
+  })
+
+  it('is a no-op when nothing to restore is missing', () => {
+    const list = [entry('alpha-stew', 0)]
+    expect(restoreShoppingItems(list, list, new Set([key(list[0])]))).toBe(list)
+    expect(restoreShoppingItems(list, list, new Set())).toBe(list)
   })
 })
 
