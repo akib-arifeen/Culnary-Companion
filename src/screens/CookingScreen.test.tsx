@@ -282,6 +282,20 @@ describe('CookingScreen', () => {
     expect(screen.getByRole('status').textContent).toContain('Didn’t catch “purple monkey”')
   })
 
+  it('jumps to a spoken step number that exists', () => {
+    renderAt('/cooking/fixture-curry')
+    act(() => fakes.onTranscript?.('go to step 4'))
+    expect(screen.getByText(`Step 4 of ${stepCount}`)).toBeTruthy()
+  })
+
+  it('a spoken step number past the end says so, with the range, instead of silently doing nothing', () => {
+    renderAt('/cooking/fixture-curry')
+    act(() => fakes.onTranscript?.('go to step 9'))
+    expect(screen.getByText(`Step 1 of ${stepCount}`)).toBeTruthy()
+    expect(screen.getByRole('status').textContent).toContain(`There is no step 9. This recipe has ${stepCount} steps (1–${stepCount}).`)
+    expect(fakes.speak).toHaveBeenCalledWith(`There is no step 9. This recipe has ${stepCount} steps (1–${stepCount}).`)
+  })
+
   it('starts a step timer from the keyboard and shows it in the Timers tab badge', async () => {
     const user = userEvent.setup()
     renderAt('/cooking/fixture-curry')

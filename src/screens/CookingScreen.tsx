@@ -161,7 +161,8 @@ function CookingSession({ recipe }: { recipe: Recipe }) {
 
   /** The one place every input (tap, key, voice, gesture) ends up. */
   const run = (command: Command, source: CommandSource, heard?: string) => {
-    // The completion dialog is up: only going back, jumping, help and silence still make sense.
+    // The completion dialog is up: only going back, jumping to a step and stopping speech still run.
+    // Help is ignored here, so "?" cannot open the panel behind the dialog.
     if (state.finished && !FINISHED_OK.has(command.type)) return
     if (source !== 'tap') notify(source, describeCommand(command), heard)
     const confirm = source === 'voice' || source === 'gesture'
@@ -170,9 +171,19 @@ function CookingSession({ recipe }: { recipe: Recipe }) {
       case 'previous':
         dispatch({ type: command.type })
         break
-      case 'goToStep':
-        dispatch({ type: 'goToStep', index: command.step - 1 })
+      case 'goToStep': {
+        // A number the recipe has no step for must say so: the reducer no-ops, and a silent no-op
+        // looks like the command was never heard.
+        const target = command.step
+        if (!Number.isInteger(target) || target < 1 || target > state.stepCount) {
+          const text = `There is no step ${target}. This recipe has ${state.stepCount} steps (1–${state.stepCount}).`
+          notify('info', text)
+          speak(text)
+          break
+        }
+        dispatch({ type: 'goToStep', index: target - 1 })
         break
+      }
       case 'repeat':
         speak(stepText(state.stepIndex))
         break

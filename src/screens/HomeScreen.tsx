@@ -19,7 +19,7 @@ function matches(recipe: Recipe, words: readonly string[]): boolean {
 
 /** Recipes ("The Rail"). `/search` renders this with the filter focused. */
 const HomeScreen = ({ focusFilter = false }: { focusFilter?: boolean }) => {
-  const { inProgress } = useRecipeContext()
+  const { inProgress, clearInProgress } = useRecipeContext()
   const { items: shoppingItems } = useShoppingList()
   const [voiceOn] = usePref<boolean>(PREF_KEYS.voice, PREF_DEFAULTS[PREF_KEYS.voice])
   const [gesturesOn] = usePref<boolean>(PREF_KEYS.gestures, PREF_DEFAULTS[PREF_KEYS.gestures])
@@ -112,7 +112,7 @@ const HomeScreen = ({ focusFilter = false }: { focusFilter?: boolean }) => {
           <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {resuming.map(({ recipe, step }) => (
               <li key={recipe.id} className="min-w-0">
-                <ResumeTicket recipe={recipe} step={step} />
+                <ResumeTicket recipe={recipe} step={step} onDiscard={() => clearInProgress(recipe.id)} />
               </li>
             ))}
           </ul>
