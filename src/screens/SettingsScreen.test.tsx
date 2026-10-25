@@ -34,6 +34,12 @@ describe('SettingsScreen (Station setup)', () => {
     expect(screen.getAllByRole('switch')).toHaveLength(4)
   })
 
+  it('says the microphone is requested when cooking starts, not by this switch', () => {
+    renderSettings()
+    expect(screen.getByText(/microphone is requested when you start cooking with voice on/i)).toBeTruthy()
+    expect(screen.queryByText(/when you turn it on/i)).toBeNull()
+  })
+
   it('replays the tutorial by clearing the onboarded flag', async () => {
     window.localStorage.setItem(PREF_KEYS.onboarded, 'true')
     renderSettings()

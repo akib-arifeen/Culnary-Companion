@@ -36,13 +36,15 @@ const parsed = new Map<string, { raw: string; value: unknown; ok: boolean }>()
 const listeners = new Set<() => void>()
 
 function readRaw(key: string): string | null {
+  // A write that could not be persisted is newer than whatever localStorage still holds for that key,
+  // so the in-memory copy wins. With nothing in memory, the stored value (or a blocked read) decides.
+  const pending = memory.get(key)
+  if (pending !== undefined) return pending
   try {
-    const raw = window.localStorage.getItem(key)
-    if (raw !== null) return raw
+    return window.localStorage.getItem(key)
   } catch {
-    // storage blocked: fall through to the in-memory copy
+    return null
   }
-  return memory.get(key) ?? null
 }
 
 function notify(): void {
