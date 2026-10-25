@@ -118,5 +118,9 @@ export function shoppingListText(list: readonly ShoppingEntry[], findRecipe: Rec
   const blocks = groups.map(({ recipe, entries }) =>
     [recipe.title, ...entries.map((entry) => ingredientLine(recipe, entry))].join('\n'),
   )
-  return ['SHOPPING LIST', ...blocks, 'Recipes adapted from the Wikibooks Cookbook (CC BY-SA 4.0).'].join('\n\n')
+  return [
+    'SHOPPING LIST',
+    ...blocks,
+    'Recipes adapted from the Wikibooks Cookbook (https://en.wikibooks.org/wiki/Cookbook:Table_of_Contents), CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/).',
+  ].join('\n\n')
 }

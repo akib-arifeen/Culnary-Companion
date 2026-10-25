@@ -117,7 +117,7 @@ describe('shoppingListText', () => {
         'SHOPPING LIST',
         'Alpha Stew\n[ ] 400 g Chickpeas (drained)\n[x] Salt',
         'Beta Toast\n[ ] 2 slices Bread',
-        'Recipes adapted from the Wikibooks Cookbook (CC BY-SA 4.0).',
+        'Recipes adapted from the Wikibooks Cookbook (https://en.wikibooks.org/wiki/Cookbook:Table_of_Contents), CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/).',
       ].join('\n\n'),
     )
   })
