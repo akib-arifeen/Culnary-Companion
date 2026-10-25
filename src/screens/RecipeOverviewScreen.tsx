@@ -1,10 +1,13 @@
+import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
-import { Check } from 'lucide-react'
+import { Check, ShoppingBasket } from 'lucide-react'
 import Page from '../components/Page'
 import { Button, ButtonLink, Label, Ticket } from '../components/ui/primitives'
 import { getRecipeById } from '../data/recipes'
+import { countForRecipe } from '../lib/shoppingList'
 import { bodyCounts, extraFacts, shortServes, shortTime } from '../lib/recipeMeta'
 import { useRecipeContext } from '../context/RecipeContext'
+import { useShoppingList } from '../hooks/useShoppingList'
 
 const linkClass = 'underline underline-offset-3 decoration-2 hover:decoration-accent'
 
@@ -23,6 +26,8 @@ const RecipeOverviewScreen = () => {
   const navigate = useNavigate()
   const recipe = id ? getRecipeById(id) : undefined
   const { isFavorite, toggleFavorite, getCurrentStep, setInProgress } = useRecipeContext()
+  const { items: shoppingItems, addRecipe } = useShoppingList()
+  const [shoppingStatus, setShoppingStatus] = useState('')
 
   if (!recipe) {
     return (
@@ -54,6 +59,22 @@ const RecipeOverviewScreen = () => {
   const counts = bodyCounts(recipe)
   const revision = source.revisionUrl.match(/oldid=(\d+)/)?.[1]
 
+  const onShoppingList = countForRecipe(shoppingItems, recipe.id)
+  const allOnShoppingList = recipe.ingredients.length > 0 && onShoppingList === recipe.ingredients.length
+  const addAllToShoppingList = () => {
+    const missing = recipe.ingredients.length - onShoppingList
+    addRecipe(recipe.id)
+    if (missing === 0) {
+      setShoppingStatus(
+        recipe.ingredients.length === 1
+          ? 'The ingredient is already on the shopping list.'
+          : `All ${recipe.ingredients.length} ingredients are already on the shopping list.`,
+      )
+    } else {
+      setShoppingStatus(`Added ${missing} ${missing === 1 ? 'ingredient' : 'ingredients'} to the shopping list.`)
+    }
+  }
+
   return (
     <Page withActionBar>
       <Link to="/" className="label-mono inline-flex min-h-11 items-center text-ink underline underline-offset-3 decoration-2">
@@ -84,16 +105,41 @@ const RecipeOverviewScreen = () => {
               {more.length > 0 ? <p className="max-w-prose text-ink-2">{more.join(' · ')}</p> : null}
               <p className="label-mono text-ink-2">{counts}</p>
             </div>
-            <div>
-              <Button
-                variant="secondary"
-                aria-pressed={saved}
-                onClick={() => toggleFavorite(recipe.id)}
-                className={`whitespace-nowrap ${saved ? 'bg-ink! text-paper!' : ''}`}
-              >
-                {saved ? <Check size={18} aria-hidden="true" /> : null}
-                Save recipe
-              </Button>
+            <div className="flex flex-col items-start gap-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <Button
+                  variant="secondary"
+                  aria-pressed={saved}
+                  onClick={() => toggleFavorite(recipe.id)}
+                  className={`whitespace-nowrap ${saved ? 'bg-ink! text-paper!' : ''}`}
+                >
+                  {saved ? <Check size={18} aria-hidden="true" /> : null}
+                  Save recipe
+                </Button>
+                {allOnShoppingList ? (
+                  <ButtonLink to="/shopping" variant="secondary" className="whitespace-nowrap">
+                    <ShoppingBasket size={18} aria-hidden="true" />
+                    Open shopping list
+                  </ButtonLink>
+                ) : (
+                  <Button
+                    variant="secondary"
+                    onClick={addAllToShoppingList}
+                    aria-label={`Add all ingredients from ${recipe.title} to the shopping list`}
+                  >
+                    <ShoppingBasket size={18} aria-hidden="true" />
+                    {onShoppingList === 0 ? 'Add all ingredients' : 'Add remaining ingredients'}
+                  </Button>
+                )}
+              </div>
+              {shoppingItems.length > 0 && !allOnShoppingList ? (
+                <Link to="/shopping" className={`${linkClass} label-mono inline-flex min-h-11 items-center`}>
+                  Shopping list · {shoppingItems.length} {shoppingItems.length === 1 ? 'item' : 'items'}
+                </Link>
+              ) : null}
+              <p role="status" className={shoppingStatus ? 'max-w-prose font-bold text-ink' : 'sr-only'}>
+                {shoppingStatus}
+              </p>
             </div>
           </div>
         </div>

@@ -8,6 +8,7 @@ import SettingsScreen from './screens/SettingsScreen'
 import FavoritesScreen from './screens/FavoritesScreen'
 import SearchScreen from './screens/SearchScreen'
 import RecentsScreen from './screens/RecentsScreen'
+import ShoppingListScreen from './screens/ShoppingListScreen'
 import NotFoundScreen from './screens/NotFoundScreen'
 import TimerDoneBanner from './components/TimerDoneBanner'
 import { Wordmark } from './components/ui/primitives'
@@ -58,6 +59,7 @@ function App() {
             <Route path="/favorites" element={<FavoritesScreen />} />
             <Route path="/search" element={<SearchScreen />} />
             <Route path="/recents" element={<RecentsScreen />} />
+            <Route path="/shopping" element={<ShoppingListScreen />} />
             <Route path="*" element={<NotFoundScreen />} />
           </Routes>
         </Router>

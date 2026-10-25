@@ -38,6 +38,7 @@ That is exactly this app's job, so the whole system borrows from it:
   - **Below 1024 px:** the step fills the screen, the HEARD strip sits at the top, and the tabs are Steps / Ingredients / Timers.
   - **The HEARD strip is the loudest status.** In the wide layout its ticket carries a 2 px ink edge — the only rail panel that does. Its turn-on / fix action is a full-height 56 px control at the strip's edge; on phones the strip is one 56 px line.
 - **Settings:** "Station setup". One column of real switches grouped as Hands-free · Reading · Your data · About and credits.
+- **Shopping list:** "The basket". A header line with **Copy list** (ink) and **Remove checked** (secondary) plus the checked count, then one ticket per recipe. The recipe title links back to its full ticket; rows show the ingredient name, note and mono quantity exactly as the recipe states them, ticked off with the same strike-through + `ink-2` as the cooking checklist. Plain text, for the clipboard or manual copying, keeps the recipes' CC BY-SA 4.0 credit.
 - **Onboarding:** "Before service". Three ordered blocks: **Voice** (first), **Gestures**, **Touch and keys**. Each has one live test ("Say 'next'", "Show a thumb up") and its own on-switch. One ink button closes it.
 
 ## Theme (OKLCH; contrast computed against `--color-paper`)
@@ -138,6 +139,7 @@ The wordmark (the mono label "CULINARY COMPANION" with a ticket-notch glyph), th
 - **md and up:** a top bar with the wordmark on the left and the same three links on the right. **No bottom bar on desktop.**
 - **Cooking mode** has no app nav: back arrow plus title only.
 - `/search` and `/recents` stay as routes. `/search` renders Recipes with the filter focused; `/recents` renders "In progress".
+- `/shopping` is the shopping list. It is deliberately **not** a fourth primary nav item: it is reached from a recipe's "Add all ingredients" action and from Recipes once the list has something on it.
 
 ## Exports
 
