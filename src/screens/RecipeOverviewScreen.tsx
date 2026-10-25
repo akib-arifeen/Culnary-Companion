@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { Check, ShoppingBasket } from 'lucide-react'
 import Page from '../components/Page'
+import RecipePhoto from '../components/RecipePhoto'
 import { Button, ButtonLink, Label, Ticket } from '../components/ui/primitives'
 import { getRecipeById } from '../data/recipes'
 import { countForRecipe } from '../lib/shoppingList'
@@ -85,11 +86,8 @@ const RecipeOverviewScreen = () => {
       <Ticket className="mt-5" header={<Label className="whitespace-nowrap text-ink">{meta.join(' · ')}</Label>} bodyClassName="p-4 sm:p-5">
         <div className="grid gap-5 md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] md:items-stretch">
           <figure className="flex min-w-0 flex-col">
-            <img
-              src={photo.src}
-              alt={photo.alt}
-              width={photo.width}
-              height={photo.height}
+            <RecipePhoto
+              photo={photo}
               className="aspect-4/3 w-full rounded-ticket border border-rule bg-paper-2 object-cover md:max-h-80"
             />
             <figcaption className="mt-2 text-sm text-ink-2">
@@ -125,7 +123,7 @@ const RecipeOverviewScreen = () => {
                   <Button
                     variant="secondary"
                     onClick={addAllToShoppingList}
-                    aria-label={`Add all ingredients from ${recipe.title} to the shopping list`}
+                    aria-label={`${onShoppingList === 0 ? 'Add all ingredients' : 'Add remaining ingredients'} from ${recipe.title} to the shopping list`}
                   >
                     <ShoppingBasket size={18} aria-hidden="true" />
                     {onShoppingList === 0 ? 'Add all ingredients' : 'Add remaining ingredients'}

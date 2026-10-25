@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -79,6 +79,15 @@ describe('RecipeOverviewScreen (Full ticket)', () => {
     expect(screen.getByRole('img', { name: 'A bowl of chickpea stew' })).toBeTruthy()
   })
 
+  it('shows a visible fallback instead of a broken image when the photo file is missing', () => {
+    renderAt('/recipe/alpha-stew')
+    fireEvent.error(screen.getByRole('img', { name: 'A bowl of chickpea stew' }))
+    expect(screen.getByText('Photo unavailable')).toBeTruthy()
+    expect(screen.getByRole('img', { name: 'Photo unavailable: A bowl of chickpea stew' })).toBeTruthy()
+    // Attribution is not the thing that went missing.
+    expect(screen.getAllByText(/Photo: Ada Cook/).length).toBeGreaterThan(0)
+  })
+
   it('puts the CTAs in a sticky stub (not beside the photo) and keeps Save in the flow', () => {
     window.localStorage.setItem(PREF_KEYS.progress, JSON.stringify({ 'alpha-stew': 1 }))
     renderAt('/recipe/alpha-stew')
@@ -146,13 +155,23 @@ describe('RecipeOverviewScreen (Full ticket)', () => {
     )
     renderAt('/recipe/alpha-stew')
     await userEvent.click(
-      screen.getByRole('button', { name: 'Add all ingredients from Alpha Stew to the shopping list' }),
+      screen.getByRole('button', { name: 'Add remaining ingredients from Alpha Stew to the shopping list' }),
     )
     expect(readJSON(PREF_KEYS.shoppingList, [])).toEqual([
       { recipeId: 'alpha-stew', index: 0, checked: true },
       { recipeId: 'alpha-stew', index: 1, checked: false },
     ])
     expect(screen.getByRole('status').textContent).toBe('Added 1 ingredient to the shopping list.')
+  })
+
+  it('keeps the visible "Add remaining ingredients" text in the accessible name (label in name)', () => {
+    window.localStorage.setItem(
+      PREF_KEYS.shoppingList,
+      JSON.stringify([{ recipeId: 'alpha-stew', index: 0, checked: false }]),
+    )
+    renderAt('/recipe/alpha-stew')
+    const button = screen.getByRole('button', { name: 'Add remaining ingredients from Alpha Stew to the shopping list' })
+    expect(button.textContent?.trim()).toBe('Add remaining ingredients')
   })
 
   it('offers the list instead of the add button once every ingredient is on it', async () => {
